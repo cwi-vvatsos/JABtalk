@@ -160,7 +160,11 @@ public class JTAudioRecorder {
 		FileOutputStream out = null;
 		try {
 			byte[] raw = readFully(inFilename);
-			byte[] payload = trimSilence ? trimSilence(raw) : raw;
+			byte[] payload = raw;
+			if (trimSilence) {
+				payload = trimSilence(payload);
+				payload = normalizeVolume(payload);
+			}
 
 			out = new FileOutputStream(outFilename);
 			WaveHeader wh = new WaveHeader(WaveHeader.FORMAT_PCM, selectedChannel,
@@ -271,6 +275,69 @@ public class JTAudioRecorder {
 
 		byte[] out = new byte[length];
 		System.arraycopy(pcm, startByte, out, 0, length);
+		return out;
+	}
+
+	// Peak-normalize so the loudest sample hits ~90% of full scale. Gain is
+	// capped so that a very quiet recording doesn't get amplified to a wall of
+	// noise. Applied in-place-style on a fresh byte[] so raw file isn't touched.
+	private byte[] normalizeVolume(byte[] pcm) {
+		int bytesPerSample = (selectedBPP / 8) * selectedChannel;
+		if (pcm.length == 0 || bytesPerSample <= 0) {
+			return pcm;
+		}
+
+		int peak = 0;
+		for (int i = 0; i + bytesPerSample <= pcm.length; i += bytesPerSample) {
+			int amp = sampleAmplitude(pcm, i);
+			if (amp > peak) {
+				peak = amp;
+			}
+		}
+
+		if (peak == 0) {
+			return pcm;
+		}
+
+		int fullScale = selectedBPP == 16 ? 32767 : 127;
+		double target = fullScale * 0.9;
+		double gain = target / peak;
+		double maxGain = 20.0;   // ~26 dB — enough to lift a soft voice, not enough to blow up the noise floor
+		if (gain < 1.0) {
+			gain = 1.0;          // never make it quieter
+		}
+		if (gain > maxGain) {
+			gain = maxGain;
+		}
+
+		if (gain == 1.0) {
+			return pcm;
+		}
+
+		byte[] out = new byte[pcm.length];
+		if (selectedBPP == 16) {
+			for (int i = 0; i + 1 < pcm.length; i += 2) {
+				int lo = pcm[i] & 0xFF;
+				int hi = pcm[i + 1];
+				int v = (hi << 8) | lo;
+				int scaled = (int) Math.round(v * gain);
+				if (scaled > 32767) scaled = 32767;
+				if (scaled < -32768) scaled = -32768;
+				out[i] = (byte) (scaled & 0xFF);
+				out[i + 1] = (byte) ((scaled >> 8) & 0xFF);
+			}
+		} else {
+			for (int i = 0; i < pcm.length; i++) {
+				int centered = (pcm[i] & 0xFF) - 128;
+				int scaled = (int) Math.round(centered * gain);
+				if (scaled > 127) scaled = 127;
+				if (scaled < -128) scaled = -128;
+				out[i] = (byte) ((scaled + 128) & 0xFF);
+			}
+		}
+
+		JTApp.logMessage(TAG, JTApp.LOG_SEVERITY_INFO,
+				"Normalize: peak=" + peak + " gain=" + String.format(java.util.Locale.US, "%.2f", gain));
 		return out;
 	}
 

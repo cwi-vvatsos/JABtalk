@@ -1433,6 +1433,12 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
             } else {
                 JTApp.getDataStore().clearTempDirectory();
                 JTApp.fireDataStoreUpdated();
+                String err = com.jabstone.jabtalk.basic.SyncBackup
+                        .writeBackupIfConfigured(EditIdeogramActivity.this);
+                if (err != null && !"no_folder".equals(err) && !"folder_lost".equals(err)) {
+                    JTApp.logMessage(TAG, JTApp.LOG_SEVERITY_WARNING,
+                            "Sync after edit failed: " + err);
+                }
             }
             progressDialog.dismiss();
             if (m_wakeLock.isHeld()) {

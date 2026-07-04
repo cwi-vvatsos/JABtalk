@@ -11,6 +11,10 @@
           android:icon="@drawable/ic_action_paste"
           android:title="@string/menu_paste"
         android:showAsAction="ifRoom" />
+    <item android:id="@+id/menu_item_sort"
+          android:icon="@android:drawable/ic_menu_sort_by_size"
+          android:title="@string/menu_sort"
+        android:showAsAction="ifRoom" />
     <item android:id="@+id/menu_item_preferences"
           android:icon="@drawable/ic_action_settings"
           android:title="@string/menu_preferences"
@@ -18,6 +22,10 @@
     <item android:id="@+id/menu_item_backup"
           android:icon="@drawable/ic_action_save"
           android:title="@string/menu_backup"
+        android:showAsAction="ifRoom" />
+    <item android:id="@+id/menu_item_sync"
+          android:icon="@android:drawable/ic_menu_upload"
+          android:title="@string/menu_sync"
         android:showAsAction="ifRoom" />
     <item android:id="@+id/menu_item_restore"
           android:icon="@drawable/ic_action_restore"

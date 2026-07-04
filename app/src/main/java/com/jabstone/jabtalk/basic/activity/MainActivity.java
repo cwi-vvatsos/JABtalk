@@ -388,7 +388,8 @@ public class MainActivity extends Activity implements ICategorySelectionListener
         if ( ( category.getAudioPath () != null || category.isSynthesizeButton () ) && touchEvent
                 && JTApp.isCategoryAudioEnabled () ) {
         	m_currentlySpeaking = category;
-            beginPlayIdeogram(category);          
+            highlightPlayingTile ( category );
+            beginPlayIdeogram(category);
         }
         toggleGridView();
     }
@@ -398,6 +399,7 @@ public class MainActivity extends Activity implements ICategorySelectionListener
         if ( word.getAudioPath () != null || word.isSynthesizeButton () ) {
             if ( JTApp.isWordAudioEnabled () ) {
             	m_currentlySpeaking = word;
+            	highlightPlayingTile ( word );
             	beginPlayIdeogram(word);
             }
         }
@@ -417,6 +419,11 @@ public class MainActivity extends Activity implements ICategorySelectionListener
 
     @Override
     public void SpeechComplete () {
+        runOnUiThread ( new Runnable () {
+            public void run () {
+                highlightPlayingTile ( null );
+            }
+        } );
     	if(JTApp.isDisplayPhraseEnabled() || m_currentlySpeaking == null) {
 	        runOnUiThread ( new Runnable () {
 	            public void run () {
@@ -424,6 +431,32 @@ public class MainActivity extends Activity implements ICategorySelectionListener
 	            }
 	        } );
     	}
+    }
+
+    private void highlightPlayingTile ( Ideogram playing ) {
+        if ( m_ideogramGrid == null ) {
+            return;
+        }
+        for ( int i = 0; i < m_ideogramGrid.getChildCount (); i++ ) {
+            View child = m_ideogramGrid.getChildAt ( i );
+            Object tag = child.getTag ();
+            if ( !( tag instanceof Ideogram ) ) {
+                continue;
+            }
+            Ideogram gram = (Ideogram) tag;
+            boolean active = playing != null && gram.getId ().equals ( playing.getId () );
+            int drawableId;
+            if ( active ) {
+                drawableId = gram.getType () == Ideogram.Type.Category
+                        ? R.drawable.category_background_playing
+                        : R.drawable.word_background_playing;
+            } else {
+                drawableId = gram.getType () == Ideogram.Type.Category
+                        ? R.drawable.category_background
+                        : R.drawable.word_background;
+            }
+            child.setBackgroundResource ( drawableId );
+        }
     }
     
     @Override

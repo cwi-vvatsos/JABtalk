@@ -27,15 +27,16 @@ import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.ListAdapter;
-import android.widget.ListView;
 
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.jabstone.jabtalk.basic.ClipBoard;
 import com.jabstone.jabtalk.basic.ClipBoard.Operation;
 import com.jabstone.jabtalk.basic.JTApp;
 import com.jabstone.jabtalk.basic.R;
-import com.jabstone.jabtalk.basic.adapters.ManageParentListAdapter;
+import com.jabstone.jabtalk.basic.adapters.ManageRecyclerAdapter;
 import com.jabstone.jabtalk.basic.exceptions.JabException;
 import com.jabstone.jabtalk.basic.storage.Ideogram;
 import com.jabstone.jabtalk.basic.storage.Ideogram.Type;
@@ -68,7 +69,8 @@ public class ManageActivity extends Activity {
     private final int ACTIVITY_EXPAND_CATEGORY = 5002;
     private final int ACTIVITY_SELECT_BACKUP_PATH = 5003;
     private final int ACTIVITY_SELECT_RESTORE_FILE = 5004;
-    private ManageParentListAdapter m_adapter = null;
+    private final int ACTIVITY_SELECT_SYNC_FOLDER = 5005;
+    private ManageRecyclerAdapter m_adapter = null;
     private RestoreTask restoreTask = null;
     private BackupTask backupTask = null;
     private SaveDataStoreTask saveTask = null;
@@ -76,7 +78,9 @@ public class ManageActivity extends Activity {
     private Ideogram m_ideogram = null;
     private Ideogram m_selectedGram = null;
     private boolean madeChanges = false;
-    private ListView m_listView = null;
+    private RecyclerView m_listView = null;
+    private ItemTouchHelper m_touchHelper = null;
+    private boolean m_sortMode = false;
     private boolean isBackupRestoreClicked = false;
     private boolean isPartialRestoreClicked = false;
     private Uri restorePath = null;
@@ -102,11 +106,10 @@ public class ManageActivity extends Activity {
         progressDialog = new ProgressDialog(this);
         progressDialog.setCancelable(false);
         progressDialog.setIndeterminate(true);
-        m_adapter = new ManageParentListAdapter(this, m_ideogram);
-        m_adapter.setOnClickListener(new OnClickListener() {
+        m_adapter = new ManageRecyclerAdapter(this, m_ideogram);
+        m_adapter.setOnItemClickListener(new ManageRecyclerAdapter.OnItemClickListener() {
             @Override
-            public void onClick(View v) {
-                Ideogram gram = (Ideogram) v.getTag();
+            public void onItemClick(Ideogram gram) {
                 if (gram.getType() == Type.Category) {
                     expandCategory(gram);
                 } else {
@@ -114,7 +117,45 @@ public class ManageActivity extends Activity {
                 }
             }
         });
-        setListAdapter(m_adapter);
+        m_adapter.setOnItemMoveListener(new ManageRecyclerAdapter.OnItemMoveListener() {
+            @Override
+            public void onItemMoved() {
+                madeChanges = true;
+                persistChanges(false);
+            }
+        });
+
+        getListView().setLayoutManager(new LinearLayoutManager(this));
+        getListView().setAdapter(m_adapter);
+
+        m_touchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(
+                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+            @Override
+            public boolean onMove(RecyclerView recyclerView,
+                                  RecyclerView.ViewHolder viewHolder,
+                                  RecyclerView.ViewHolder target) {
+                return m_adapter.onItemMove(viewHolder.getAdapterPosition(),
+                        target.getAdapterPosition());
+            }
+
+            @Override
+            public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
+                // swipe not used
+            }
+
+            @Override
+            public boolean isLongPressDragEnabled() {
+                return false;
+            }
+
+            @Override
+            public void clearView(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
+                super.clearView(recyclerView, viewHolder);
+                m_adapter.onItemMoveFinished();
+            }
+        });
+        m_touchHelper.attachToRecyclerView(getListView());
+        m_adapter.setTouchHelper(m_touchHelper);
 
         JTApp.addDataStoreListener(m_adapter);
         restoreProgressDialog();
@@ -459,6 +500,12 @@ public class ManageActivity extends Activity {
             case R.id.menu_item_edit_ideogram:
                 editIdeogram(m_ideogram);
                 break;
+            case R.id.menu_item_sort:
+                toggleSortMode();
+                break;
+            case R.id.menu_item_sync:
+                showSyncDialog();
+                break;
         }
 
         return true;
@@ -482,6 +529,22 @@ public class ManageActivity extends Activity {
                         String id = getIntent().getStringExtra(JTApp.INTENT_EXTRA_IDEOGRAM_ID);
                         if (JTApp.getDataStore().getIdeogram(id) == null) {
                             exitActivity();
+                        }
+                    }
+                    break;
+                case ACTIVITY_SELECT_SYNC_FOLDER:
+                    if (data != null && data.getData() != null) {
+                        Uri treeUri = data.getData();
+                        int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+                        try {
+                            getContentResolver().takePersistableUriPermission(treeUri, flags);
+                            saveSyncFolderUri(treeUri);
+                            performSyncBackup(true);
+                        } catch (Exception e) {
+                            android.widget.Toast.makeText(this,
+                                    getString(R.string.sync_toast_backup_failed, e.getMessage()),
+                                    android.widget.Toast.LENGTH_LONG).show();
                         }
                     }
                     break;
@@ -704,19 +767,116 @@ public class ManageActivity extends Activity {
         }
     }
 
-    protected ListView getListView() {
+    private void showSyncDialog() {
+        final Uri current = getSyncFolderUri();
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(R.string.sync_dialog_title);
+
+        if (current == null) {
+            builder.setMessage(R.string.sync_status_no_folder);
+            builder.setPositiveButton(R.string.sync_choose_folder,
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            launchSyncFolderPicker();
+                        }
+                    });
+            builder.setNegativeButton(R.string.button_cancel, null);
+        } else {
+            String display = current.getLastPathSegment ();
+            if (display == null) display = current.toString ();
+            builder.setMessage(getString(R.string.sync_status_set, display));
+            builder.setPositiveButton(R.string.sync_backup_now,
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            performSyncBackup(true);
+                        }
+                    });
+            builder.setNeutralButton(R.string.sync_change_folder,
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            launchSyncFolderPicker();
+                        }
+                    });
+            builder.setNegativeButton(R.string.sync_disable,
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            clearSyncFolder();
+                        }
+                    });
+        }
+        builder.show();
+    }
+
+    private void launchSyncFolderPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(intent, ACTIVITY_SELECT_SYNC_FOLDER);
+    }
+
+    private Uri getSyncFolderUri() {
+        return com.jabstone.jabtalk.basic.SyncBackup.getFolderUri(this);
+    }
+
+    private void saveSyncFolderUri(Uri uri) {
+        com.jabstone.jabtalk.basic.SyncBackup.saveFolderUri(this, uri);
+    }
+
+    private void clearSyncFolder() {
+        com.jabstone.jabtalk.basic.SyncBackup.clearFolder(this);
+    }
+
+    private void performSyncBackup(boolean showToast) {
+        if (madeChanges) {
+            try {
+                JTApp.getDataStore().saveDataStore();
+                madeChanges = false;
+            } catch (Exception ignored) {}
+        }
+        String err = com.jabstone.jabtalk.basic.SyncBackup.writeBackupIfConfigured(this);
+        if (err == null) {
+            if (showToast) {
+                android.widget.Toast.makeText(this, R.string.sync_toast_backup_done,
+                        android.widget.Toast.LENGTH_SHORT).show();
+            }
+        } else if ("no_folder".equals(err) || "folder_lost".equals(err)) {
+            if (showToast) {
+                android.widget.Toast.makeText(this, R.string.sync_toast_folder_lost,
+                        android.widget.Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            android.widget.Toast.makeText(this,
+                    getString(R.string.sync_toast_backup_failed, err),
+                    android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void toggleSortMode() {
+        m_sortMode = !m_sortMode;
+        m_adapter.setSortMode(m_sortMode);
+        int msg = m_sortMode
+                ? R.string.manage_activity_sort_mode_on
+                : R.string.manage_activity_sort_mode_off;
+        android.widget.Toast.makeText(this, getString(msg), android.widget.Toast.LENGTH_SHORT).show();
+        if (m_sortMode) {
+            setTitle(getString(R.string.manage_activity_sort_mode_on));
+        } else if (!m_ideogram.isRoot()) {
+            setTitle(m_ideogram.getLabel());
+        } else {
+            setTitle(getString(R.string.manage_activity_title));
+        }
+    }
+
+    protected RecyclerView getListView() {
         if (m_listView == null) {
-            m_listView = (ListView) findViewById(android.R.id.list);
+            m_listView = (RecyclerView) findViewById(R.id.manage_list);
         }
         return m_listView;
-    }
-
-    protected ListAdapter getListAdapter() {
-        return getListView().getAdapter();
-    }
-
-    protected void setListAdapter(ListAdapter adapter) {
-        getListView().setAdapter(adapter);
     }
 
     private String getFileNameFromUri(Uri uri) {
@@ -1004,6 +1164,9 @@ public class ManageActivity extends Activity {
                 showDialog(DIALOG_ERROR);
             } else {
                 JTApp.fireDataStoreUpdated();
+                if (getSyncFolderUri() != null) {
+                    performSyncBackup(false);
+                }
             }
             if (exitAfterSave) {
                 finish();

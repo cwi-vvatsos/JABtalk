@@ -86,6 +86,7 @@ public class GridAdapter extends BaseAdapter implements ICategorySelectionListen
                     .findViewById(R.id.TEXTVIEW_ID);
             picture.setImageBitmap ( jpg );
             pictureView.setTag ( gram );
+            pictureView.setActivated ( false );
             title.setText ( gram.getLabel () );            
             if ( gram.isTextButton () ) {
                 PictureFrameDimensions dm = JTApp.getPictureDimensions ( PictureSize.GridPicture,

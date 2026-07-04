@@ -19,4 +19,6 @@
 	<color name="jabtalkSentenceTip">#d2a66f</color>
 	<color name="jabtalkSentenceActionButton">#d2a66f</color>
 	<color name="jabtalkSentenceActionButtonBorder">#d49e5b</color>
+
+	<color name="jabtalkPlayingHighlight">#80FFC107</color>
 </resources>

@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+	<style name="AppTheme" parent="@android:style/Theme.Holo">
+		<item name="android:actionBarWidgetTheme">@android:style/Theme.Holo</item>
+		<item name="android:popupMenuStyle">@style/AppPopupMenu</item>
+		<item name="android:itemTextAppearance">@style/AppPopupItemText</item>
+	</style>
+
+	<style name="AppPopupMenu" parent="@android:style/Widget.Holo.PopupMenu">
+		<item name="android:popupBackground">#212121</item>
+	</style>
+
+	<style name="AppPopupItemText" parent="@android:style/TextAppearance.Holo.Widget.PopupMenu.Large">
+		<item name="android:textColor">@color/jabtalkWhite</item>
+	</style>
+
 	<style name="picture_text">
 		<item name="android:textSize">17sp</item>
 		<item name="android:textColor">@color/jabtalkWhite</item>
