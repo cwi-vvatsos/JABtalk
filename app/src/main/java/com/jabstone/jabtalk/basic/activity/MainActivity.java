@@ -324,11 +324,16 @@ public class MainActivity extends Activity implements ICategorySelectionListener
     	super.onResume ();
 
         if ( JTApp.isSentenceBuilderEnabled () ) {
-            m_sentenceContainer.setVisibility ( View.VISIBLE );            
+            m_sentenceContainer.setVisibility ( View.VISIBLE );
         } else {
             m_sentenceContainer.setVisibility ( View.GONE );
         }
-        
+
+        if ( m_gridWidth > 0 ) {
+            setGridSize();
+            m_gridAdapter.notifyDataSetChanged();
+        }
+
         toggleGridView();
         
         // Setup scroll speed
@@ -430,10 +435,14 @@ public class MainActivity extends Activity implements ICategorySelectionListener
     
     @Override
     public void OnFrameResized ( int width, int height ) {
+        if ( width <= 0 || width == m_gridWidth ) {
+            return;
+        }
+        m_gridWidth = width;
+        setGridSize ();
+        m_gridAdapter.notifyDataSetChanged ();
         if ( !m_isGridSized ) {
             m_isGridSized = true;
-            m_gridWidth = width;
-            setGridSize ();
             initializeSentenceBuilder ();
             if(m_boardWords != null && m_boardWords.length > 0) {
             	for(String id : m_boardWords) {
@@ -444,9 +453,10 @@ public class MainActivity extends Activity implements ICategorySelectionListener
             	}
             	m_boardWords = null;
             	m_sentenceScroll.fullScroll ( HorizontalScrollView.FOCUS_RIGHT );
-            }            
+            }
         }
-    }    
+    }
+
     
     private void toggleGridView() {
     	Ideogram selected = getSelectedIdeogram();
@@ -804,12 +814,24 @@ public class MainActivity extends Activity implements ICategorySelectionListener
                 * pictureWidthHeightRatio );
         JTApp.setPictureDimensions ( desiredPictureWidth, desiredPictureHeight );
 
-        m_ideogramGrid.setHorizontalSpacing ( hspacing );
-        m_ideogramGrid.setVerticalSpacing ( vspacing );
-        m_ideogramGrid.setPadding ( lpadding, tpadding, rpadding, 5 );
-        m_ideogramGrid.setNumColumns ( columns );
-        m_ideogramGrid.setColumnWidth ( desiredPictureWidth );
-
+        final int finalHspacing = hspacing;
+        final int finalVspacing = vspacing;
+        final int finalLpadding = lpadding;
+        final int finalTpadding = tpadding;
+        final int finalRpadding = rpadding;
+        final int finalColumns = columns;
+        final int finalTileWidth = desiredPictureWidth;
+        m_ideogramGrid.post ( new Runnable () {
+            @Override
+            public void run () {
+                m_ideogramGrid.setHorizontalSpacing ( finalHspacing );
+                m_ideogramGrid.setVerticalSpacing ( finalVspacing );
+                m_ideogramGrid.setPadding ( finalLpadding, finalTpadding, finalRpadding, 5 );
+                m_ideogramGrid.setNumColumns ( finalColumns );
+                m_ideogramGrid.setColumnWidth ( finalTileWidth );
+                m_ideogramGrid.requestLayout ();
+            }
+        } );
     }
     
     private void navigateBackPressed() {
