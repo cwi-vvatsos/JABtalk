@@ -55,7 +55,7 @@
         </activity>
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.jabstone.fileprovider"
+            android:authorities="com.vatsos.jabtalk.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

@@ -4,11 +4,11 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.jabstone.jabtalk.basic"
+        applicationId "com.vatsos.jabtalk"
         minSdkVersion 27
         targetSdk 34
-        versionCode 533
-        versionName '5.3.3'
+        versionCode 534
+        versionName '5.3.4'
     }
 
     buildTypes {

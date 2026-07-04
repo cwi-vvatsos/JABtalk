@@ -57,6 +57,18 @@
             android:background="@color/jabtalkButtonGray"
             android:src="@drawable/ic_action_mic" />
 
+        <ImageButton
+            android:id="@+id/edit_play"
+            android:layout_width="40sp"
+            android:layout_height="wrap_content"
+            android:layout_alignBottom="@id/edit_phrase"
+            android:layout_alignTop="@id/edit_phrase"
+            android:layout_toLeftOf="@id/edit_audio"
+            android:layout_marginRight="5dp"
+            android:background="@color/jabtalkButtonGray"
+            android:contentDescription="@string/ideogram_activity_button_preview"
+            android:src="@android:drawable/ic_media_play" />
+
 
 
         <RelativeLayout

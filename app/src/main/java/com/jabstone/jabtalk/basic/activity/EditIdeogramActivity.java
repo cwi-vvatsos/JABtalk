@@ -113,6 +113,7 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
     private boolean isRecording = false;
 
     private JTAudioRecorder m_recorder = null;
+    private boolean m_trimRecordedSilence = false;
     private ProgressDialog m_speakDialog = null;
     private Dialog m_recordDialog = null;
     private SaveDataStoreTask saveTask = null;
@@ -207,6 +208,15 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
 
             public void onClick(View v) {
                 showDialog(DIALOG_AUDIO_SOURCE);
+            }
+        });
+
+        // Setup preview playback button
+        ImageButton playButton = (ImageButton) findViewById(R.id.edit_play);
+        playButton.setOnClickListener(new View.OnClickListener() {
+
+            public void onClick(View v) {
+                previewIdeogram();
             }
         });
 
@@ -433,33 +443,31 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
                 break;
             case DIALOG_AUDIO_SOURCE:
                 m_audio_bitmask = SOURCE_NO_AUDIO | SOURCE_IMPORT_AUDIO;
-                int sourceCount = 2;
-
                 if (JTApp.isMicrophoneAvailable()) {
                     m_audio_bitmask = m_audio_bitmask | SOURCE_RECORDER;
-                    sourceCount++;
                 }
                 if (JTApp.isSpeechResourceFound()) {
                     m_audio_bitmask = m_audio_bitmask | SOURCE_SYNTHESIZER;
-                    sourceCount++;
                 }
 
-                final CharSequence[] audioSource = new CharSequence[sourceCount];
-                if (JTApp.isSpeechResourceFound()) {
-                    audioSource[--sourceCount] = getString(R.string.dialog_item_audiosource_synthesizer);
-                }
+                java.util.List<CharSequence> sources = new java.util.ArrayList<>();
+                sources.add(getString(R.string.dialog_item_no_audio));
+                sources.add(getString(R.string.dialog_item_import));
                 if (JTApp.isMicrophoneAvailable()) {
-                    audioSource[--sourceCount] = getString(R.string.dialog_item_audiosource_recorder);
+                    sources.add(getString(R.string.dialog_item_audiosource_recorder));
+                    sources.add(getString(R.string.dialog_item_audiosource_recorder_clean));
                 }
-                audioSource[--sourceCount] = getString(R.string.dialog_item_import);
-                audioSource[--sourceCount] = getString(R.string.dialog_item_no_audio);
+                if (JTApp.isSpeechResourceFound()) {
+                    sources.add(getString(R.string.dialog_item_audiosource_synthesizer));
+                }
+                final CharSequence[] audioSource = sources.toArray(new CharSequence[0]);
 
                 builder = new AlertDialog.Builder(this);
                 builder.setTitle(getString(R.string.dialog_title_audio_source));
                 builder.setItems(audioSource, new DialogInterface.OnClickListener() {
 
                     public void onClick(DialogInterface dialog, int item) {
-                        getAudio(item);
+                        getAudio(audioSource[item].toString());
                     }
                 });
                 alert = builder.create();
@@ -769,7 +777,7 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
             tempImage = new File(JTApp.getDataStore().getTempDirectory(),
                     m_ideogram.getId() + ".jpg");
 
-            Uri outputUri = FileProvider.getUriForFile(this, "com.jabstone.fileprovider", tempImage);
+            Uri outputUri = FileProvider.getUriForFile(this, "com.vatsos.jabtalk.fileprovider", tempImage);
             cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, outputUri);
             startActivityForResult(cameraIntent, ACTIVITY_RESULT_CAMERA);
         } else {
@@ -822,41 +830,33 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
         }
     }
 
-    private void getAudio(int item) {
-        switch (item) {
-            case 0:
-                resetTempAudio();
-                m_ideogram.setAudioExtension(null);
-                break;
-            case 1:
-                Intent galleryIntent = new Intent();
-                galleryIntent.setAction(Intent.ACTION_GET_CONTENT);
-                galleryIntent.setType("audio/*");
-                if (galleryIntent.resolveActivity(getPackageManager()) != null) {
-                    startActivityForResult(Intent.createChooser(galleryIntent,
-                            getString(R.string.dialog_title_audio_source)), ACTIVITY_RESULT_MUSIC);
-                } else {
-                    getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_TITLE,
-                            getString(R.string.dialog_title_no_audio_app));
-                    getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_MESSAGE,
-                            getString(R.string.dialog_message_no_audio_app));
-                    showDialog(DIALOG_GENERIC);
-                }
-                break;
-            case 2:
-                if ((m_audio_bitmask & SOURCE_RECORDER) == SOURCE_RECORDER) {
-                    requestAudioPermissions(false);
-                } else {
-                    m_ideogram.setAudioExtension(JTApp.EXTENSION_SYNTHESIZER);
-                    tempAudio = null;
-                }
-                break;
-            case 3:
-                m_ideogram.setAudioExtension(JTApp.EXTENSION_SYNTHESIZER);
-                tempAudio = null;
-                break;
-            default:
-                break;
+    private void getAudio(String selection) {
+        if (selection.equals(getString(R.string.dialog_item_no_audio))) {
+            resetTempAudio();
+            m_ideogram.setAudioExtension(null);
+        } else if (selection.equals(getString(R.string.dialog_item_import))) {
+            Intent galleryIntent = new Intent();
+            galleryIntent.setAction(Intent.ACTION_GET_CONTENT);
+            galleryIntent.setType("audio/*");
+            if (galleryIntent.resolveActivity(getPackageManager()) != null) {
+                startActivityForResult(Intent.createChooser(galleryIntent,
+                        getString(R.string.dialog_title_audio_source)), ACTIVITY_RESULT_MUSIC);
+            } else {
+                getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_TITLE,
+                        getString(R.string.dialog_title_no_audio_app));
+                getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_MESSAGE,
+                        getString(R.string.dialog_message_no_audio_app));
+                showDialog(DIALOG_GENERIC);
+            }
+        } else if (selection.equals(getString(R.string.dialog_item_audiosource_recorder))) {
+            m_trimRecordedSilence = false;
+            requestAudioPermissions(false);
+        } else if (selection.equals(getString(R.string.dialog_item_audiosource_recorder_clean))) {
+            m_trimRecordedSilence = true;
+            requestAudioPermissions(false);
+        } else if (selection.equals(getString(R.string.dialog_item_audiosource_synthesizer))) {
+            m_ideogram.setAudioExtension(JTApp.EXTENSION_SYNTHESIZER);
+            tempAudio = null;
         }
     }
 
@@ -881,7 +881,7 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
     private void startRecording() {
         try {
             tempAudio = new File(JTApp.getDataStore().getTempDirectory(), m_ideogram.getId() + ".wav");
-            m_recorder = new JTAudioRecorder(tempAudio.getAbsolutePath());
+            m_recorder = new JTAudioRecorder(tempAudio.getAbsolutePath(), m_trimRecordedSilence);
             m_recorder.startRecording();
             isRecording = true;
             ImageView mic = (ImageView) m_recordDialog.findViewById(R.id.recorder_image);
@@ -926,8 +926,8 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
                 if (JTApp.isDisplayPhraseEnabled()) {
                     m_speakDialog.setMessage(m_ideogram.getPhrase());
                     m_speakDialog.show();
-                    JTApp.play(m_ideogram);
                 }
+                JTApp.play(m_ideogram);
             }
         }
     }

@@ -2,7 +2,7 @@
 <resources>
 
 <!--  BEGIN: COMMON STRINGS -->
-    <string name="app_name">JABtalk </string>
+    <string name="app_name">JABtalk FMV</string>
     <string name="browser_activity">Trình duyệt web</string>
     <string name="preference_activity">Những ưu tiên</string>    
     <string name="button_finish">Kết thúc</string>

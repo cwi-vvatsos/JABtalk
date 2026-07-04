@@ -2,7 +2,7 @@
 <resources>
     
 <!--  BEGIN: COMMON STRINGS -->
-	<string name="app_name">JABtalk </string>
+	<string name="app_name">JABtalk FMV</string>
     <string name="browser_activity">Navigateur</string>
     <string name="preference_activity">Paramétrage</string>
     <string name="button_finish">Valider</string>

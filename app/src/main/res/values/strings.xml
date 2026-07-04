@@ -2,7 +2,7 @@
 <resources>
 
 <!--  BEGIN: COMMON STRINGS -->
-    <string name="app_name">JABtalk </string>
+    <string name="app_name">JABtalk FMV</string>
     <string name="browser_activity">Browser</string>
     <string name="preference_activity">Preferences</string>    
     <string name="button_finish">Finish</string>
@@ -61,6 +61,7 @@
     <string name="dialog_item_imagesource_text">Text button</string>
     <string name="dialog_title_audio_source">Select audio source</string>
     <string name="dialog_item_audiosource_recorder">Audio Recorder</string>
+    <string name="dialog_item_audiosource_recorder_clean">Clean Audio Recorder</string>
     <string name="dialog_item_audiosource_synthesizer">Speech Synthesizer</string>
     <string name="dialog_title_save_results">Save Results</string>
     <string name="dialog_message_invalid_label">Please enter a label</string>

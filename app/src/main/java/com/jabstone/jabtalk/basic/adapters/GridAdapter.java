@@ -135,14 +135,11 @@ public class GridAdapter extends BaseAdapter implements ICategorySelectionListen
     }
 
     private void selectItem ( View v, Ideogram gram ) {
-        if ( !JTApp.isAudioPlaying () || (gram.getType().equals(Type.Category) && 
-        		(!JTApp.isCategoryAudioEnabled() || gram.getAudioPath() == null))) {
-            v.performHapticFeedback ( HapticFeedbackConstants.LONG_PRESS );
-            if ( gram.getType () == Type.Word ) {
-                JTApp.fireWordSelected ( gram, false );
-            } else {
-                JTApp.fireCategorySelected ( gram, true );
-            }
+        v.performHapticFeedback ( HapticFeedbackConstants.LONG_PRESS );
+        if ( gram.getType () == Type.Word ) {
+            JTApp.fireWordSelected ( gram, false );
+        } else {
+            JTApp.fireCategorySelected ( gram, true );
         }
     }
 
