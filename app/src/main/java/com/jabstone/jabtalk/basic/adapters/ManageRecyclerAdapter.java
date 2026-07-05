@@ -218,17 +218,33 @@ public class ManageRecyclerAdapter extends RecyclerView.Adapter<ManageRecyclerAd
             }
 
             final Holder holderRef = holder;
+            android.view.ViewGroup.LayoutParams lp = holder.itemView.getLayoutParams();
             if (m_sortMode) {
                 View.OnClickListener nullClick = null;
                 itemLayout.setOnClickListener(nullClick);
                 holder.itemView.setOnClickListener(nullClick);
                 ((Activity) m_context).unregisterForContextMenu(itemLayout);
                 holder.itemView.setAlpha(0.75f);
+                if (lp instanceof android.view.ViewGroup.MarginLayoutParams) {
+                    int gutter = (int) (80 * m_context.getResources()
+                            .getDisplayMetrics().density);
+                    android.view.ViewGroup.MarginLayoutParams mlp =
+                            (android.view.ViewGroup.MarginLayoutParams) lp;
+                    mlp.rightMargin = gutter;
+                    holder.itemView.setLayoutParams(mlp);
+                }
+                // Reserve the rightmost 25% of the (already shrunk) row as a
+                // scroll-only strip so the user can drag there to scroll the
+                // list while still being able to grab a tile from the left
+                // to reorder it.
                 View.OnTouchListener dragTouch = new View.OnTouchListener() {
                     @Override
                     public boolean onTouch(View v, MotionEvent event) {
                         if (event.getAction() == MotionEvent.ACTION_DOWN && m_touchHelper != null) {
-                            m_touchHelper.startDrag(holderRef);
+                            float dragZoneWidth = v.getWidth() * 0.75f;
+                            if (event.getX() <= dragZoneWidth) {
+                                m_touchHelper.startDrag(holderRef);
+                            }
                         }
                         return false;
                     }
@@ -237,6 +253,14 @@ public class ManageRecyclerAdapter extends RecyclerView.Adapter<ManageRecyclerAd
                 holder.itemView.setOnTouchListener(dragTouch);
             } else {
                 holder.itemView.setAlpha(1.0f);
+                if (lp instanceof android.view.ViewGroup.MarginLayoutParams) {
+                    android.view.ViewGroup.MarginLayoutParams mlp =
+                            (android.view.ViewGroup.MarginLayoutParams) lp;
+                    if (mlp.rightMargin != 0) {
+                        mlp.rightMargin = 0;
+                        holder.itemView.setLayoutParams(mlp);
+                    }
+                }
                 itemLayout.setOnTouchListener(null);
                 holder.itemView.setOnTouchListener(null);
                 View.OnClickListener onClick = new View.OnClickListener() {

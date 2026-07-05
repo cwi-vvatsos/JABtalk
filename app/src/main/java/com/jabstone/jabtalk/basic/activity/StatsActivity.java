@@ -1,13 +1,20 @@
 package com.jabstone.jabtalk.basic.activity;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.jabstone.jabtalk.basic.JTApp;
 import com.jabstone.jabtalk.basic.R;
 
 import java.util.List;
@@ -59,6 +66,44 @@ public class StatsActivity extends Activity {
             view.setBackgroundColor(i % 2 == 1 ? altColor : normalColor);
             container.addView(view);
         }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.stats_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.menu_item_clear_stats) {
+            confirmClearStats();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void confirmClearStats() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.stats_clear_confirm_title)
+                .setMessage(R.string.stats_clear_confirm_message)
+                .setPositiveButton(R.string.button_yes, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        JTApp.getDataStore().clearAllStats();
+                        try {
+                            JTApp.getDataStore().saveDataStore();
+                        } catch (Exception ignored) {}
+                        populateSection(R.id.stats_words_container, StatsHelper.topWords(10, null));
+                        populateSection(R.id.stats_sentences_container, StatsHelper.topSentences(10));
+                        populateSection(R.id.stats_bigrams_container, StatsHelper.topBigrams(10));
+                        Toast.makeText(StatsActivity.this,
+                                R.string.stats_cleared_toast, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton(R.string.button_no, null)
+                .show();
     }
 
     private void wireViewAll(int linkId, final String kind) {

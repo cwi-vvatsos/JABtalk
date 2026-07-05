@@ -409,7 +409,7 @@ public class MainActivity extends Activity implements ICategorySelectionListener
                 if ( !isSentenceWord && !JTApp.isSentenceBuilderEnabled ()
                         && m_lastCompletedWordId != null ) {
                     long delta = System.currentTimeMillis () - m_lastCompletedTimeMs;
-                    long windowMs = JTApp.getComboWindowSeconds () * 1000L;
+                    long windowMs = JTApp.getComboWindowMillis ();
                     if ( delta < windowMs && !m_lastCompletedWordId.equals ( word.getId () ) ) {
                         JTApp.getDataStore ().incrementFreehandBigram (
                                 m_lastCompletedWordId, word.getId () );

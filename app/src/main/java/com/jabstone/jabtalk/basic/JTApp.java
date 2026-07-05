@@ -110,18 +110,18 @@ public class JTApp extends Application implements OnCompletionListener,
         return m_clipboard;
     }
 
-    public static int getComboWindowSeconds () {
+    public static long getComboWindowMillis () {
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences ( me
                 .getApplicationContext () );
         String value = settings.getString (
                 me.getResources ().getString ( R.string.preference_combo_window_key ), "3" );
         try {
-            int v = Integer.parseInt ( value );
-            if ( v < 1 ) v = 1;
-            if ( v > 30 ) v = 30;
-            return v;
+            double v = Double.parseDouble ( value.replace ( ',', '.' ) );
+            if ( v < 0.1 ) v = 0.1;
+            if ( v > 30.0 ) v = 30.0;
+            return Math.round ( v * 1000.0 );
         } catch ( Exception e ) {
-            return 3;
+            return 3000L;
         }
     }
 

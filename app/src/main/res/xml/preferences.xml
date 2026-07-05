@@ -73,7 +73,7 @@
 			android:key="@string/preference_combo_window_key"
 			android:title="@string/preference_combo_window_title"
 			android:summary="@string/preference_combo_window_summary"
-			android:inputType="number"
+			android:inputType="numberDecimal"
 			android:persistent="true"
 			android:defaultValue="@string/preference_combo_window_default" />
     </PreferenceCategory>

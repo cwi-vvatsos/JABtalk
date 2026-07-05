@@ -537,6 +537,13 @@ public class ManageActivity extends Activity {
             case R.id.menu_item_stats:
                 startActivity(new Intent(this, StatsActivity.class));
                 break;
+            case R.id.menu_item_share:
+                Intent share = new Intent(Intent.ACTION_SEND);
+                share.setType("text/plain");
+                share.putExtra(Intent.EXTRA_TEXT, getString(R.string.share_app_message));
+                startActivity(Intent.createChooser(share,
+                        getString(R.string.share_app_chooser_title)));
+                break;
         }
 
         return true;

@@ -921,6 +921,17 @@ public class DataStore {
     public HashMap<String, Integer> getSentenceBigrams() { return m_sentenceBigrams; }
     public HashMap<String, Integer> getFreehandBigrams() { return m_freehandBigrams; }
 
+    public void clearAllStats() {
+        m_sentencePhrases.clear();
+        m_sentenceBigrams.clear();
+        m_freehandBigrams.clear();
+        for (Ideogram g : m_ideogramMap.values()) {
+            if (g != null) {
+                g.setPlaysByMonth(new HashMap<String, Integer>());
+            }
+        }
+    }
+
     public void incrementSentencePhrase(java.util.List<String> ideogramIds) {
         if (ideogramIds == null || ideogramIds.size() < 2) return;
         String key = android.text.TextUtils.join("|", ideogramIds);

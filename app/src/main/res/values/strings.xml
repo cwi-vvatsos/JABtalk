@@ -134,6 +134,9 @@
     <string name="menu_paste">Paste</string>
     <string name="menu_sort">Sort</string>
     <string name="menu_stats">Stats</string>
+    <string name="menu_share_app">Share JABtalk FMV</string>
+    <string name="share_app_chooser_title">Share JABtalk FMV via</string>
+    <string name="share_app_message">Have you heard about the updated JABtalk FMV? Download it from https://github.com/cwi-vvatsos/JABtalk/releases</string>
     <string name="menu_search">Search</string>
     <string name="search_hint">Search tiles…</string>
     <string name="stats_activity_title">Stats</string>
@@ -141,6 +144,10 @@
     <string name="stats_section_sentences">Top 10 sentences</string>
     <string name="stats_section_bigrams">Top 10 word pairs</string>
     <string name="stats_view_all">View all →</string>
+    <string name="stats_clear">Clear stats</string>
+    <string name="stats_clear_confirm_title">Clear all stats?</string>
+    <string name="stats_clear_confirm_message">This will delete all play counts, sentence combos and word pair stats. This cannot be undone.</string>
+    <string name="stats_cleared_toast">Stats cleared</string>
     <string name="stats_col_word">Word</string>
     <string name="stats_col_sentence">Sentence</string>
     <string name="stats_col_pair">Word pair</string>
