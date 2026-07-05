@@ -87,6 +87,7 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
     private final int SOURCE_RECORDER = 4;
     private final int SOURCE_SYNTHESIZER = 8;
     private final int ACTIVITY_RESULT_CAMERA = 1000;
+    private final int ACTIVITY_RESULT_CROP = 1006;
     private final int ACTIVITY_RESULT_GALLERY = 1001;
     private final int ACTIVITY_RESULT_WEB = 1002;
     private final int ACTIVITY_RESULT_MUSIC = 1003;
@@ -422,21 +423,22 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
         EditIdeogramActivity activity = this;
         switch (id) {
             case DIALOG_IMAGE_SOURCE:
-                final CharSequence[] imageSource = JTApp.isCameraAvailable() ? new CharSequence[4]
-                        : new CharSequence[3];
-                imageSource[SOURCE_GALLERY] = getString(R.string.dialog_item_import);
-                imageSource[SOURCE_WEB] = getString(R.string.dialog_item_import_web);
-                imageSource[SOURCE_TEXT] = getString(R.string.dialog_item_imagesource_text);
+                java.util.List<CharSequence> imgSources = new java.util.ArrayList<>();
+                imgSources.add(getString(R.string.dialog_item_import));
+                imgSources.add(getString(R.string.dialog_item_import_web));
+                imgSources.add(getString(R.string.dialog_item_import_open_symbols));
+                imgSources.add(getString(R.string.dialog_item_imagesource_text));
                 if (JTApp.isCameraAvailable()) {
-                    imageSource[SOURCE_CAMERA] = getString(R.string.dialog_item_imagesource_camera);
+                    imgSources.add(getString(R.string.dialog_item_imagesource_camera));
                 }
+                final CharSequence[] imageSource = imgSources.toArray(new CharSequence[0]);
 
                 builder = new AlertDialog.Builder(this);
                 builder.setTitle(getString(R.string.dialog_title_image_source));
                 builder.setItems(imageSource, new DialogInterface.OnClickListener() {
 
                     public void onClick(DialogInterface dialog, int item) {
-                        getImage(item);
+                        getImage(imageSource[item].toString());
                     }
                 });
                 alert = builder.create();
@@ -622,18 +624,35 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
                     } catch (Exception ignored) {
                     }
                 }
-                try {
-                    if (tempImage != null && isImageFileValid(tempImage.getAbsolutePath())) {
-                        createPreviewContainer(false);
-                        resizePhoto(tempImage.getAbsolutePath());
-                    } else {
-                        throw new JabException(
-                                getString(R.string.dialog_message_invald_image_format));
-                    }
-                } catch (JabException je) {
+                if (tempImage != null && isImageFileValid(tempImage.getAbsolutePath())) {
+                    launchCrop(tempImage);
+                } else {
                     getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_TITLE,
                             getString(R.string.dialog_title_error));
-                    getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_MESSAGE, je.getMessage());
+                    getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_MESSAGE,
+                            getString(R.string.dialog_message_invald_image_format));
+                    showDialog(DIALOG_GENERIC);
+                }
+                break;
+            case ACTIVITY_RESULT_CROP:
+                if (resultCode != RESULT_OK || data == null) {
+                    resetTempImage();
+                    break;
+                }
+                try {
+                    Uri croppedUri = com.yalantis.ucrop.UCrop.getOutput(data);
+                    if (croppedUri != null) {
+                        File cropped = new File(croppedUri.getPath());
+                        if (cropped.exists() && cropped.length() > 0) {
+                            tempImage = cropped;
+                            createPreviewContainer(false);
+                            resizePhoto(tempImage.getAbsolutePath());
+                        }
+                    }
+                } catch (Exception e) {
+                    getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_TITLE,
+                            getString(R.string.dialog_title_error));
+                    getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_MESSAGE, e.getMessage());
                     showDialog(DIALOG_GENERIC);
                 }
                 break;
@@ -789,45 +808,78 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
         }
     }
 
-    private void getImage(int item) {
-        switch (item) {
-            case SOURCE_CAMERA:
-                requestCameraPermissions(false);
-                break;
-            case SOURCE_GALLERY:
-                Intent galleryIntent = new Intent(MediaStore.ACTION_PICK_IMAGES);
-                galleryIntent.putExtra("EXTRA_PICK_IMAGES_MAX", "1");
-                galleryIntent.setType("image/*");
+    private void getImage(String selection) {
+        if (selection.equals(getString(R.string.dialog_item_imagesource_camera))) {
+            requestCameraPermissions(false);
+        } else if (selection.equals(getString(R.string.dialog_item_import))) {
+            Intent galleryIntent = new Intent(MediaStore.ACTION_PICK_IMAGES);
+            galleryIntent.putExtra("EXTRA_PICK_IMAGES_MAX", "1");
+            galleryIntent.setType("image/*");
 
-                if (galleryIntent.resolveActivity(getPackageManager()) != null) {
-                    startActivityForResult(galleryIntent, ACTIVITY_RESULT_GALLERY);
-                } else {
-                    getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_TITLE,
-                            getString(R.string.dialog_title_no_image_app));
-                    getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_MESSAGE,
-                            getString(R.string.dialog_message_no_image_app));
-                    showDialog(DIALOG_GENERIC);
-                }
-                break;
-            case SOURCE_WEB:
-                Intent webIntent = new Intent(this, BrowserActivity.class);
-                String url = m_label.getText().toString();
-                try {
-                    url = URLEncoder.encode(url, "UTF-8");
-                } catch (UnsupportedEncodingException ignored) {
-                }
-                webIntent.putExtra(JTApp.INTENT_EXTRA_SEARCH_TERM, url);
-                startActivityForResult(webIntent, ACTIVITY_RESULT_WEB);
-                break;
-            case SOURCE_TEXT:
-                m_ideogram.setImageExtension(JTApp.EXTENSION_TEXT_IMAGE);
-                tempImage = null;
-                createPreviewContainer(true);
-                ImageView imgView = (ImageView) m_previewContainer
-                        .findViewById(R.id.IMAGEVIEW_ID);
-                imgView.setImageDrawable(getResources().getDrawable(R.drawable.chalkboard));
-                break;
+            if (galleryIntent.resolveActivity(getPackageManager()) != null) {
+                startActivityForResult(galleryIntent, ACTIVITY_RESULT_GALLERY);
+            } else {
+                getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_TITLE,
+                        getString(R.string.dialog_title_no_image_app));
+                getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_MESSAGE,
+                        getString(R.string.dialog_message_no_image_app));
+                showDialog(DIALOG_GENERIC);
+            }
+        } else if (selection.equals(getString(R.string.dialog_item_import_web))) {
+            launchImageSearch(null);
+        } else if (selection.equals(getString(R.string.dialog_item_import_open_symbols))) {
+            launchImageSearch(getString(R.string.open_symbols_search_url));
+        } else if (selection.equals(getString(R.string.dialog_item_imagesource_text))) {
+            m_ideogram.setImageExtension(JTApp.EXTENSION_TEXT_IMAGE);
+            tempImage = null;
+            createPreviewContainer(true);
+            ImageView imgView = (ImageView) m_previewContainer
+                    .findViewById(R.id.IMAGEVIEW_ID);
+            imgView.setImageDrawable(getResources().getDrawable(R.drawable.chalkboard));
         }
+    }
+
+    private void launchCrop(File source) {
+        try {
+            File cropped = new File(JTApp.getDataStore().getTempDirectory(),
+                    m_ideogram.getId() + "_crop.jpg");
+            Uri srcUri = Uri.fromFile(source);
+            Uri dstUri = Uri.fromFile(cropped);
+
+            com.yalantis.ucrop.UCrop.Options opts = new com.yalantis.ucrop.UCrop.Options();
+            opts.setShowCropGrid(true);
+            opts.setShowCropFrame(true);
+            opts.setFreeStyleCropEnabled(true);
+            opts.setHideBottomControls(true);
+            opts.setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG);
+            opts.setCompressionQuality(90);
+
+            Intent intent = com.yalantis.ucrop.UCrop.of(srcUri, dstUri)
+                    .withOptions(opts)
+                    .getIntent(this);
+            startActivityForResult(intent, ACTIVITY_RESULT_CROP);
+        } catch (Exception e) {
+            JTApp.logMessage(TAG, JTApp.LOG_SEVERITY_ERROR,
+                    "Failed to launch crop: " + e.getMessage());
+            try {
+                createPreviewContainer(false);
+                resizePhoto(source.getAbsolutePath());
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private void launchImageSearch(String searchUrlOrNull) {
+        Intent webIntent = new Intent(this, BrowserActivity.class);
+        String url = m_label.getText().toString();
+        try {
+            url = URLEncoder.encode(url, "UTF-8");
+        } catch (UnsupportedEncodingException ignored) {
+        }
+        webIntent.putExtra(JTApp.INTENT_EXTRA_SEARCH_TERM, url);
+        if (searchUrlOrNull != null) {
+            webIntent.putExtra(JTApp.INTENT_EXTRA_SEARCH_URL, searchUrlOrNull);
+        }
+        startActivityForResult(webIntent, ACTIVITY_RESULT_WEB);
     }
 
     private void getAudio(String selection) {

@@ -76,6 +76,11 @@ public class BrowserActivity extends Activity implements DialogInterface.OnCance
 
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setBuiltInZoomControls(true);
+        // Spoof to a regular desktop Chrome UA so sites don't serve a
+        // WebView-flavored / mobile stripped-down page.
+        webView.getSettings().setUserAgentString(
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                        + "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36");
         WebClient myWebView = new WebClient();
         webView.setWebViewClient(myWebView);
         registerForContextMenu(webView);
@@ -302,8 +307,20 @@ public class BrowserActivity extends Activity implements DialogInterface.OnCance
      */
     private void showWeb() {
         // get the URL to display from the passed in intent
-        String url = JTApp.getSearchProvider()
-                + getIntent().getStringExtra(JTApp.INTENT_EXTRA_SEARCH_TERM);
+        String prefix = getIntent().getStringExtra(JTApp.INTENT_EXTRA_SEARCH_URL);
+        String term = getIntent().getStringExtra(JTApp.INTENT_EXTRA_SEARCH_TERM);
+        if (prefix == null || prefix.isEmpty()) {
+            prefix = JTApp.getSearchProvider();
+        }
+        String url;
+        if (prefix.contains("TERM")) {
+            url = prefix.replace("TERM", term == null ? "" : term);
+        } else {
+            url = prefix + (term == null ? "" : term);
+        }
+        android.util.Log.d("JAB", "BrowserActivity URL: prefix=" + prefix
+                + " term=" + term + " -> " + url);
+        android.util.Log.d("JAB", "WebView UA: " + webView.getSettings().getUserAgentString());
         webView.loadUrl(url);
     }
 
@@ -316,6 +333,7 @@ public class BrowserActivity extends Activity implements DialogInterface.OnCance
 
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            android.util.Log.d("JAB", "onPageStarted: " + url);
             // show the loading dialog as the page starts to load
             m_dialog.setMessage(getString(R.string.progress_loading));
             m_dialog.show();
@@ -323,6 +341,7 @@ public class BrowserActivity extends Activity implements DialogInterface.OnCance
 
         @Override
         public void onPageFinished(WebView view, String url) {
+            android.util.Log.d("JAB", "onPageFinished: " + url);
             // hide the page dialog when the page is finished loading
 //            Matcher imgMatcher = m_imagePattern.matcher(url);
 //            if ( (url.contains ( "google.com" ) && url.contains("imgrc=")) || imgMatcher.find()) {
@@ -351,6 +370,17 @@ public class BrowserActivity extends Activity implements DialogInterface.OnCance
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            android.util.Log.d("JAB", "shouldOverrideUrlLoading (deprecated): " + url);
+            return false;
+        }
+
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view,
+                android.webkit.WebResourceRequest request) {
+            String u = request != null && request.getUrl() != null
+                    ? request.getUrl().toString() : "(null)";
+            android.util.Log.d("JAB", "shouldOverrideUrlLoading: " + u
+                    + " redirect=" + (request != null && request.isRedirect()));
             return false;
         }
     }
@@ -374,7 +404,11 @@ public class BrowserActivity extends Activity implements DialogInterface.OnCance
                 if (getIntent().hasExtra(INTENT_EXTRA_URL)) {
                     String location = getIntent().getStringExtra(INTENT_EXTRA_URL);
                     String ext = getFileExtention(location, true);
-                    if (ext != null && (!ext.endsWith(".jpg") || !ext.endsWith(".jpeg") || !ext.endsWith(".gif") || !ext.endsWith(".png") || !ext.endsWith(".bmp"))) {
+                    if (ext == null || !(ext.equalsIgnoreCase(".jpg")
+                            || ext.equalsIgnoreCase(".jpeg")
+                            || ext.equalsIgnoreCase(".gif")
+                            || ext.equalsIgnoreCase(".png")
+                            || ext.equalsIgnoreCase(".bmp"))) {
                         ext = ".jpg";
                     }
                     resultFile = new File(JTApp.getDataStore().getTempDirectory(), UUID.randomUUID()

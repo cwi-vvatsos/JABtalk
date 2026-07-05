@@ -71,12 +71,13 @@ public class JTApp extends Application implements OnCompletionListener,
     public final static String INTENT_EXTRA_DIALOG_MESSAGE = "dialog.message";
     public final static String INTENT_EXTRA_DIALOG_FINISH_ON_DISMISS = "dialog.finish";
     public final static String INTENT_EXTRA_SEARCH_TERM = "";
+    public final static String INTENT_EXTRA_SEARCH_URL = "search_url";
     public final static String INTENT_EXTRA_CALLED_FROM_MAIN = "CalledFromMain";
     public final static String INTENT_EXTRA_CLEAR_MANAGE_STACK = "ClearStack";
 
     public final static String DATASTORE_VERSION = "2";
     private static final Object lock = new Object ();
-    public static String URL_SUPPORT = "http://www.jabstone.com/support";
+    public static String URL_SUPPORT = "https://github.com/cwi-vvatsos/JABtalk/issues";
     private static JTApp me = null;
     private static List<ICategorySelectionListener> categoryListeners = new ArrayList<>();
     private static List<IDataStoreListener> datastoreListeners = new ArrayList<>();

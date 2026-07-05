@@ -416,6 +416,34 @@ public class ManageActivity extends Activity {
 
         MenuItem restore = menu.findItem(R.id.menu_item_restore);
         restore.setVisible(m_ideogram.isRoot());
+
+        MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+        if (searchItem != null) {
+            android.widget.SearchView searchView =
+                    (android.widget.SearchView) searchItem.getActionView();
+            searchView.setQueryHint(getString(R.string.search_hint));
+            searchView.setOnQueryTextListener(new android.widget.SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    m_adapter.setSearchQuery(query);
+                    return true;
+                }
+                @Override
+                public boolean onQueryTextChange(String newText) {
+                    m_adapter.setSearchQuery(newText);
+                    return true;
+                }
+            });
+            searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+                @Override
+                public boolean onMenuItemActionExpand(MenuItem item) { return true; }
+                @Override
+                public boolean onMenuItemActionCollapse(MenuItem item) {
+                    m_adapter.setSearchQuery(null);
+                    return true;
+                }
+            });
+        }
         return true;
     }
 

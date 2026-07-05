@@ -24,8 +24,11 @@ import com.jabstone.jabtalk.basic.storage.Ideogram;
 import com.jabstone.jabtalk.basic.storage.Ideogram.Type;
 import com.jabstone.jabtalk.basic.widgets.AutoResizeTextView;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
 
 public class ManageRecyclerAdapter extends RecyclerView.Adapter<ManageRecyclerAdapter.Holder>
         implements IDataStoreListener {
@@ -50,6 +53,8 @@ public class ManageRecyclerAdapter extends RecyclerView.Adapter<ManageRecyclerAd
     private OnItemMoveListener m_moveListener = null;
     private ItemTouchHelper m_touchHelper = null;
     private boolean m_sortMode = false;
+    private String m_searchQuery = null;
+    private List<Ideogram> m_filtered = null;
 
     public ManageRecyclerAdapter(Context context, Ideogram parent) {
         m_context = context;
@@ -79,23 +84,63 @@ public class ManageRecyclerAdapter extends RecyclerView.Adapter<ManageRecyclerAd
     }
 
     public Ideogram getItem(int position) {
-        return m_parent.getChildren(true).get(position);
+        return currentItems().get(position);
     }
 
     @Override
     public int getItemCount() {
-        return m_parent.getChildren(true).size();
+        return currentItems().size();
+    }
+
+    private List<Ideogram> currentItems() {
+        return m_filtered != null ? m_filtered : m_parent.getChildren(true);
+    }
+
+    public boolean isFiltered() {
+        return m_filtered != null;
+    }
+
+    public void setSearchQuery(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            m_searchQuery = null;
+            m_filtered = null;
+        } else {
+            m_searchQuery = query.trim().toLowerCase(Locale.getDefault());
+            m_filtered = new ArrayList<>();
+            collectMatching(JTApp.getDataStore().getRootCategory(), m_filtered);
+        }
+        notifyDataSetChanged();
+    }
+
+    private void collectMatching(Ideogram node, List<Ideogram> out) {
+        if (node == null) return;
+        for (Ideogram child : node.getChildren(true)) {
+            if (matches(child, m_searchQuery)) {
+                out.add(child);
+            }
+            if (child.getType() == Type.Category) {
+                collectMatching(child, out);
+            }
+        }
+    }
+
+    private boolean matches(Ideogram gram, String q) {
+        if (q == null) return true;
+        String label = gram.getLabel();
+        String phrase = gram.getPhrase();
+        return (label != null && label.toLowerCase(Locale.getDefault()).contains(q))
+                || (phrase != null && phrase.toLowerCase(Locale.getDefault()).contains(q));
     }
 
     @Override
     public long getItemId(int position) {
-        Ideogram gram = m_parent.getChildren(true).get(position);
+        Ideogram gram = currentItems().get(position);
         return gram.getId().hashCode();
     }
 
     @Override
     public int getItemViewType(int position) {
-        Ideogram gram = m_parent.getChildren(true).get(position);
+        Ideogram gram = currentItems().get(position);
         Bitmap jpg = gram.getImage();
         boolean landscape = jpg.getWidth() > jpg.getHeight();
         boolean category = gram.getType() == Type.Category;
@@ -130,7 +175,7 @@ public class ManageRecyclerAdapter extends RecyclerView.Adapter<ManageRecyclerAd
 
     @Override
     public void onBindViewHolder(@NonNull Holder holder, int position) {
-        Ideogram ideogram = m_parent.getChildren(true).get(position);
+        Ideogram ideogram = currentItems().get(position);
         Bitmap jpg = ideogram.getImage();
         try {
             ImageView thumb = holder.itemView.findViewById(R.id.ideogram_thumb);
@@ -143,17 +188,6 @@ public class ManageRecyclerAdapter extends RecyclerView.Adapter<ManageRecyclerAd
                     ? Html.fromHtml("<i>" + ideogram.getPhrase() + "&nbsp;</i>")
                     : "");
             itemLayout.setTag(ideogram);
-
-            TextView playCount = holder.itemView.findViewById(R.id.ideogram_play_count);
-            if (playCount != null) {
-                int count = ideogram.getCurrentMonthPlayCount();
-                if (count > 0) {
-                    playCount.setText(String.valueOf(count));
-                    playCount.setVisibility(View.VISIBLE);
-                } else {
-                    playCount.setVisibility(View.GONE);
-                }
-            }
 
             AutoResizeTextView textLabel = holder.itemView.findViewById(R.id.ideogram_text_label);
             if (ideogram.isHidden()) {
@@ -224,6 +258,9 @@ public class ManageRecyclerAdapter extends RecyclerView.Adapter<ManageRecyclerAd
     }
 
     public boolean onItemMove(int from, int to) {
+        if (isFiltered()) {
+            return false;
+        }
         LinkedList<Ideogram> children = m_parent.getChildren(true);
         if (from < 0 || to < 0 || from >= children.size() || to >= children.size()) {
             return false;
