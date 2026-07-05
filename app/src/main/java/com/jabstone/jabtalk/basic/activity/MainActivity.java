@@ -79,6 +79,8 @@ public class MainActivity extends Activity implements ICategorySelectionListener
     private boolean m_challenge_incorrect = false;
     private int m_incorrect_count = 0;
     private Ideogram m_currentlySpeaking = null;
+    private String m_lastCompletedWordId = null;
+    private long m_lastCompletedTimeMs = 0L;
     private GridView m_ideogramGrid;
     private LinearLayout m_emptyLayout;
     private RelativeLayout m_sentenceContainer;
@@ -220,6 +222,12 @@ public class MainActivity extends Activity implements ICategorySelectionListener
     	}
         super.onPause ();
         m_speakDialog.dismiss ();
+        try {
+            JTApp.getDataStore ().saveDataStore ();
+        } catch (Exception e) {
+            JTApp.logMessage(TAG, JTApp.LOG_SEVERITY_ERROR,
+                    "Failed to persist play counts: " + e.getMessage());
+        }
     }
 
     @Override
@@ -398,12 +406,21 @@ public class MainActivity extends Activity implements ICategorySelectionListener
     public void WordSelected ( Ideogram word, boolean isSentenceWord ) {
         if ( word.getAudioPath () != null || word.isSynthesizeButton () ) {
             if ( JTApp.isWordAudioEnabled () ) {
+                if ( !isSentenceWord && !JTApp.isSentenceBuilderEnabled ()
+                        && m_lastCompletedWordId != null ) {
+                    long delta = System.currentTimeMillis () - m_lastCompletedTimeMs;
+                    long windowMs = JTApp.getComboWindowSeconds () * 1000L;
+                    if ( delta < windowMs && !m_lastCompletedWordId.equals ( word.getId () ) ) {
+                        JTApp.getDataStore ().incrementFreehandBigram (
+                                m_lastCompletedWordId, word.getId () );
+                    }
+                }
             	m_currentlySpeaking = word;
             	highlightPlayingTile ( word );
             	beginPlayIdeogram(word);
             }
         }
-        
+
         if ( JTApp.isSentenceBuilderEnabled () && word.getType () == Type.Word
                 && !isSentenceWord ) {
             View lastViewOnBoard = m_sentenceBoard.getChildAt ( m_sentenceBoard
@@ -419,6 +436,11 @@ public class MainActivity extends Activity implements ICategorySelectionListener
 
     @Override
     public void SpeechComplete () {
+        if ( m_currentlySpeaking != null
+                && m_currentlySpeaking.getType () == Type.Word ) {
+            m_lastCompletedWordId = m_currentlySpeaking.getId ();
+            m_lastCompletedTimeMs = System.currentTimeMillis ();
+        }
         runOnUiThread ( new Runnable () {
             public void run () {
                 highlightPlayingTile ( null );
@@ -791,6 +813,11 @@ public class MainActivity extends Activity implements ICategorySelectionListener
                             + " " );
                     wordList.add ( w );
                 }
+            }
+            if ( wordList.size () >= 2 ) {
+                java.util.ArrayList<String> ids = new java.util.ArrayList<>( wordList.size () );
+                for ( Ideogram w : wordList ) ids.add ( w.getId () );
+                JTApp.getDataStore ().incrementSentencePhrase ( ids );
             }
             m_speakDialog.setMessage ( buff.toString () );
             m_speakDialog.show ();

@@ -31,6 +31,9 @@
           android:icon="@drawable/ic_action_restore"
           android:title="@string/menu_restore"
         android:showAsAction="ifRoom" />
+    <item android:id="@+id/menu_item_stats"
+          android:title="@string/menu_stats"
+        android:showAsAction="never" />
     <item android:id="@+id/menu_item_help"
           android:title="@string/menu_help"
         android:showAsAction="never" />

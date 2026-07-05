@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/jabtalkWhite"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout style="@style/StatsTable">
+            <LinearLayout style="@style/StatsHeaderRow">
+                <TextView style="@style/StatsHeaderText"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:text="@string/stats_section_words" />
+                <TextView style="@style/StatsHeaderText"
+                    android:text="@string/stats_col_count"
+                    android:layout_width="wrap_content"
+                    android:gravity="right"
+                    android:minWidth="60dp" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/stats_words_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+            <LinearLayout style="@style/StatsFooterRow">
+                <TextView
+                    android:id="@+id/stats_words_view_all"
+                    style="@style/StatsViewAllLink"
+                    android:text="@string/stats_view_all" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout style="@style/StatsTable"
+            android:layout_marginTop="20dp">
+            <LinearLayout style="@style/StatsHeaderRow">
+                <TextView style="@style/StatsHeaderText"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:text="@string/stats_section_sentences" />
+                <TextView style="@style/StatsHeaderText"
+                    android:text="@string/stats_col_count"
+                    android:layout_width="wrap_content"
+                    android:gravity="right"
+                    android:minWidth="60dp" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/stats_sentences_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+            <LinearLayout style="@style/StatsFooterRow">
+                <TextView
+                    android:id="@+id/stats_sentences_view_all"
+                    style="@style/StatsViewAllLink"
+                    android:text="@string/stats_view_all" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout style="@style/StatsTable"
+            android:layout_marginTop="20dp">
+            <LinearLayout style="@style/StatsHeaderRow">
+                <TextView style="@style/StatsHeaderText"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:text="@string/stats_section_bigrams" />
+                <TextView style="@style/StatsHeaderText"
+                    android:text="@string/stats_col_count"
+                    android:layout_width="wrap_content"
+                    android:gravity="right"
+                    android:minWidth="60dp" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/stats_bigrams_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+            <LinearLayout style="@style/StatsFooterRow">
+                <TextView
+                    android:id="@+id/stats_bigrams_view_all"
+                    style="@style/StatsViewAllLink"
+                    android:text="@string/stats_view_all" />
+            </LinearLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

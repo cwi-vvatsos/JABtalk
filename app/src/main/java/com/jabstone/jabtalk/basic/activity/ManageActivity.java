@@ -506,6 +506,9 @@ public class ManageActivity extends Activity {
             case R.id.menu_item_sync:
                 showSyncDialog();
                 break;
+            case R.id.menu_item_stats:
+                startActivity(new Intent(this, StatsActivity.class));
+                break;
         }
 
         return true;
@@ -645,6 +648,7 @@ public class ManageActivity extends Activity {
                 final View restoreLayout = restoreInflater.inflate(R.layout.backup_restore_dialog,
                         (ViewGroup) findViewById(R.id.restore_linear_layout));
                 final CheckBox restoreOver = (CheckBox) restoreLayout.findViewById(R.id.chkRestoreOverData);
+                final CheckBox keepStats = (CheckBox) restoreLayout.findViewById(R.id.chkKeepStats);
 
                 final Button btnCancelRestore = (Button) restoreLayout.findViewById(R.id.btn_cancelRestore);
                 btnCancelRestore.setOnClickListener(new OnClickListener() {
@@ -664,7 +668,7 @@ public class ManageActivity extends Activity {
                         dismissDialog(id);
                         if (restoreTask == null
                                 || restoreTask.getStatus() == Status.FINISHED) {
-                            restoreTask = new RestoreTask(restoreOver.isChecked(), isPartialRestore);
+                            restoreTask = new RestoreTask(restoreOver.isChecked(), isPartialRestore, keepStats.isChecked());
                             restoreTask.execute(restoreUri);
                         } else {
                             JTApp.logMessage(TAG, JTApp.LOG_SEVERITY_ERROR,
@@ -1004,10 +1008,13 @@ public class ManageActivity extends Activity {
         private boolean errorFlag = false;
         private boolean isOverWriteData = false;
         private boolean isPartialRestore = false;
+        private boolean keepStats = false;
+        private java.util.Map<String, java.util.HashMap<String, Integer>> capturedStats = null;
 
-        public RestoreTask(boolean overWriteData, boolean isPartialRestore) {
+        public RestoreTask(boolean overWriteData, boolean isPartialRestore, boolean keepStats) {
             this.isOverWriteData = overWriteData;
             this.isPartialRestore = isPartialRestore;
+            this.keepStats = keepStats;
         }
 
         @Override
@@ -1023,10 +1030,42 @@ public class ManageActivity extends Activity {
         protected Void doInBackground(Uri... params) {
             Uri fileName = params[0];
             try {
+                java.util.HashMap<String, Integer> capturedSentencePhrases = null;
+                java.util.HashMap<String, Integer> capturedSentenceBigrams = null;
+                java.util.HashMap<String, Integer> capturedFreehandBigrams = null;
+                if (keepStats) {
+                    capturedStats = new java.util.HashMap<>();
+                    for (java.util.Map.Entry<String, Ideogram> entry
+                            : JTApp.getDataStore().getIdeogramMap().entrySet()) {
+                        java.util.Map<String, Integer> plays = entry.getValue().getPlaysByMonth();
+                        if (plays != null && !plays.isEmpty()) {
+                            capturedStats.put(entry.getKey(), new java.util.HashMap<>(plays));
+                        }
+                    }
+                    capturedSentencePhrases = new java.util.HashMap<>(JTApp.getDataStore().getSentencePhrases());
+                    capturedSentenceBigrams = new java.util.HashMap<>(JTApp.getDataStore().getSentenceBigrams());
+                    capturedFreehandBigrams = new java.util.HashMap<>(JTApp.getDataStore().getFreehandBigrams());
+                }
                 if (this.isPartialRestore | !isOverWriteData) {
                     JTApp.getDataStore().restorePartialDataStore(fileName, m_selectedGram, isOverWriteData);
                 } else {
                     JTApp.getDataStore().restoreFullDataStore(fileName);
+                }
+                if (keepStats && capturedStats != null) {
+                    for (java.util.Map.Entry<String, java.util.HashMap<String, Integer>> e
+                            : capturedStats.entrySet()) {
+                        Ideogram g = JTApp.getDataStore().getIdeogram(e.getKey());
+                        if (g != null) {
+                            g.setPlaysByMonth(e.getValue());
+                        }
+                    }
+                    JTApp.getDataStore().getSentencePhrases().clear();
+                    JTApp.getDataStore().getSentencePhrases().putAll(capturedSentencePhrases);
+                    JTApp.getDataStore().getSentenceBigrams().clear();
+                    JTApp.getDataStore().getSentenceBigrams().putAll(capturedSentenceBigrams);
+                    JTApp.getDataStore().getFreehandBigrams().clear();
+                    JTApp.getDataStore().getFreehandBigrams().putAll(capturedFreehandBigrams);
+                    JTApp.getDataStore().saveDataStore();
                 }
             } catch (Exception e) {
                 errorFlag = true;

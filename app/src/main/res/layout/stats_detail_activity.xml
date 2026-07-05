@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/jabtalkWhite"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:id="@+id/stats_detail_filter_bar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/stats_filter_month"
+            android:textColor="@color/jabtalkBlack"
+            android:textSize="14sp"
+            android:layout_marginRight="8dp" />
+
+        <Spinner
+            android:id="@+id/stats_detail_month_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="140dp"
+            android:popupBackground="#212121" />
+    </LinearLayout>
+
+    <LinearLayout style="@style/StatsTable"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/stats_detail_header"
+            style="@style/StatsHeaderRow">
+            <TextView
+                android:id="@+id/stats_detail_header_label"
+                style="@style/StatsHeaderText"
+                android:layout_width="0dp"
+                android:layout_weight="1" />
+            <TextView
+                style="@style/StatsHeaderText"
+                android:text="@string/stats_col_count"
+                android:layout_width="wrap_content"
+                android:gravity="right"
+                android:minWidth="60dp" />
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/stats_detail_list"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/stats_detail_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_marginTop="24dp"
+        android:text="@string/stats_empty"
+        android:textColor="@color/jabtalkGray"
+        android:textSize="14sp"
+        android:visibility="gone" />
+</LinearLayout>

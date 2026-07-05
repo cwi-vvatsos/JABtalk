@@ -95,6 +95,7 @@
     <string name="dialog_label_backup_extension_bak">.bak</string>
     <string name="dialog_title_backup_partial_save_as">Backup Category</string>
     <string name="dialog_label_restore_overwrite">Delete existing data set?</string>
+    <string name="dialog_label_restore_keep_stats">Keep existing play stats?</string>
 
     <string name="dialog_title_no_image_app">Image App Not Found</string>
     <string name="dialog_message_no_image_app">Please download an image viewing app to import images from your device. For example, QuickPic Gallery from the Google Play store.</string>
@@ -130,6 +131,22 @@
     <string name="menu_cut">Cut</string>
     <string name="menu_paste">Paste</string>
     <string name="menu_sort">Sort</string>
+    <string name="menu_stats">Stats</string>
+    <string name="stats_activity_title">Stats</string>
+    <string name="stats_section_words">Top 10 words</string>
+    <string name="stats_section_sentences">Top 10 sentences</string>
+    <string name="stats_section_bigrams">Top 10 word pairs</string>
+    <string name="stats_view_all">View all →</string>
+    <string name="stats_col_word">Word</string>
+    <string name="stats_col_sentence">Sentence</string>
+    <string name="stats_col_pair">Word pair</string>
+    <string name="stats_col_count">Plays</string>
+    <string name="stats_filter_month">Month</string>
+    <string name="stats_month_all">All time</string>
+    <string name="stats_empty">No data yet</string>
+    <string name="stats_detail_words_title">All words</string>
+    <string name="stats_detail_sentences_title">All sentences</string>
+    <string name="stats_detail_bigrams_title">All word pairs</string>
     <string name="menu_sync">Sync Backup</string>
     <string name="sync_dialog_title">Sync backup</string>
     <string name="sync_choose_folder">Choose folder</string>
@@ -183,6 +200,10 @@
     <string name="preference_sentence_bar_word_limit_key">sentence_word_limit</string>
     <string name="preference_sentence_bar_word_limit_summary">Controls the number of words that can appear on the sentence bar at once.</string>
     <string name="preference_sentence_bar_word_limit_default">15</string>
+    <string name="preference_combo_window_title">Word combo window (seconds)</string>
+    <string name="preference_combo_window_key">combo_window_seconds</string>
+    <string name="preference_combo_window_summary">When sentence building is off, if a word is tapped within this many seconds after the previous audio ends, the two are counted as a combo for stats.</string>
+    <string name="preference_combo_window_default">3</string>
     <string name="preference_category_audio_title">Category Selection Sound</string>
     <string name="preference_category_audio_key">category_audio</string>
     <string name="preference_category_audio_summary">Play audio when category is selected</string>

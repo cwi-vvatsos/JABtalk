@@ -1,0 +1,76 @@
+package com.jabstone.jabtalk.basic.activity;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import com.jabstone.jabtalk.basic.R;
+
+import java.util.List;
+
+public class StatsActivity extends Activity {
+
+    public static final String EXTRA_KIND = "kind";
+    public static final String KIND_WORDS = "words";
+    public static final String KIND_SENTENCES = "sentences";
+    public static final String KIND_BIGRAMS = "bigrams";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.stats_activity);
+        setTitle(R.string.stats_activity_title);
+
+        populateSection(R.id.stats_words_container, StatsHelper.topWords(10, null));
+        populateSection(R.id.stats_sentences_container, StatsHelper.topSentences(10));
+        populateSection(R.id.stats_bigrams_container, StatsHelper.topBigrams(10));
+
+        wireViewAll(R.id.stats_words_view_all, KIND_WORDS);
+        wireViewAll(R.id.stats_sentences_view_all, KIND_SENTENCES);
+        wireViewAll(R.id.stats_bigrams_view_all, KIND_BIGRAMS);
+    }
+
+    private void populateSection(int containerId, List<StatsHelper.Row> rows) {
+        LinearLayout container = findViewById(containerId);
+        container.removeAllViews();
+        if (rows.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText(R.string.stats_empty);
+            empty.setTextColor(getResources().getColor(R.color.jabtalkGray));
+            int pad = (int) (10 * getResources().getDisplayMetrics().density);
+            empty.setPadding(pad, pad, pad, pad);
+            container.addView(empty);
+            return;
+        }
+        int altColor = getResources().getColor(R.color.jabtalkStatsRowAlt);
+        int normalColor = getResources().getColor(R.color.jabtalkWhite);
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (int i = 0; i < rows.size(); i++) {
+            StatsHelper.Row row = rows.get(i);
+            View view = inflater.inflate(R.layout.stats_row, container, false);
+            TextView label = view.findViewById(R.id.stats_row_label);
+            TextView count = view.findViewById(R.id.stats_row_count);
+            label.setText(row.label);
+            count.setText(String.valueOf(row.count));
+            view.setBackgroundColor(i % 2 == 1 ? altColor : normalColor);
+            container.addView(view);
+        }
+    }
+
+    private void wireViewAll(int linkId, final String kind) {
+        TextView link = findViewById(linkId);
+        link.setPaintFlags(link.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
+        link.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(StatsActivity.this, StatsDetailActivity.class);
+                intent.putExtra(EXTRA_KIND, kind);
+                startActivity(intent);
+            }
+        });
+    }
+}

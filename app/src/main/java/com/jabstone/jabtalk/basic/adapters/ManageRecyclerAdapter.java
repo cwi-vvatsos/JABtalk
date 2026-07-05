@@ -144,6 +144,17 @@ public class ManageRecyclerAdapter extends RecyclerView.Adapter<ManageRecyclerAd
                     : "");
             itemLayout.setTag(ideogram);
 
+            TextView playCount = holder.itemView.findViewById(R.id.ideogram_play_count);
+            if (playCount != null) {
+                int count = ideogram.getCurrentMonthPlayCount();
+                if (count > 0) {
+                    playCount.setText(String.valueOf(count));
+                    playCount.setVisibility(View.VISIBLE);
+                } else {
+                    playCount.setVisibility(View.GONE);
+                }
+            }
+
             AutoResizeTextView textLabel = holder.itemView.findViewById(R.id.ideogram_text_label);
             if (ideogram.isHidden()) {
                 int red = m_context.getResources().getColor(R.color.jabtalkRed);

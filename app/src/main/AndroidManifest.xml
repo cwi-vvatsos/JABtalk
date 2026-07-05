@@ -43,6 +43,14 @@
         <activity android:name=".activity.LogActivity"
             android:configChanges="orientation|keyboardHidden"
             android:label="@string/menu_log" />
+
+        <activity android:name=".activity.StatsActivity"
+            android:configChanges="orientation|keyboardHidden"
+            android:label="@string/stats_activity_title" />
+
+        <activity android:name=".activity.StatsDetailActivity"
+            android:configChanges="orientation|keyboardHidden"
+            android:label="@string/stats_activity_title" />
                    
         <activity android:name=".activity.BrowserActivity"
             android:configChanges="keyboardHidden"

@@ -59,6 +59,7 @@ public class DataStore {
     public static final String JSON_TYPE_WORD = "w";
     public static final String JSON_TYPE_ACTION = "a";
     public static final String JSON_HIDDEN = "h";
+    public static final String JSON_PLAYS = "pc";
     public static final String FILE_JSON_DATASET = "jabtalk.json";
     public static final String FILE_JSON_DATASET_PARTIAL = "jabtalk.temp";
 
@@ -69,8 +70,14 @@ public class DataStore {
 
     private final String VERSION = "versionId";
     private final String JSON_IDEOGRAMS = "rig";
+    private static final String JSON_SENTENCE_PHRASES = "sp";
+    private static final String JSON_SENTENCE_BIGRAMS = "sb";
+    private static final String JSON_FREEHAND_BIGRAMS = "fb";
     private Map<String, Ideogram> m_ideogramMap = new HashMap<>();
     private Ideogram m_rootCategory = null;
+    private HashMap<String, Integer> m_sentencePhrases = new HashMap<>();
+    private HashMap<String, Integer> m_sentenceBigrams = new HashMap<>();
+    private HashMap<String, Integer> m_freehandBigrams = new HashMap<>();
 
     public DataStore() {
         this.refreshStore();
@@ -420,6 +427,9 @@ public class DataStore {
             jsonObject.put(VERSION, JTApp.DATASTORE_VERSION);
             JSONObject graph = new JSONObject(parent.toString());
             jsonObject.put(JSON_IDEOGRAMS, graph);
+            jsonObject.put(JSON_SENTENCE_PHRASES, mapToJson(m_sentencePhrases));
+            jsonObject.put(JSON_SENTENCE_BIGRAMS, mapToJson(m_sentenceBigrams));
+            jsonObject.put(JSON_FREEHAND_BIGRAMS, mapToJson(m_freehandBigrams));
             writer = new OutputStreamWriter(new FileOutputStream(output), "UTF-8");
             writer.write(jsonObject.toString());
             writer.flush();
@@ -760,6 +770,11 @@ public class DataStore {
                     JSONObject jsonRoot = jsonObject.getJSONObject(JSON_IDEOGRAMS);
                     parent = inflateJSONCategory(jsonRoot, addItemsToMap);
                 }
+                if (addItemsToMap) {
+                    m_sentencePhrases = readStringIntMap(jsonObject, JSON_SENTENCE_PHRASES);
+                    m_sentenceBigrams = readStringIntMap(jsonObject, JSON_SENTENCE_BIGRAMS);
+                    m_freehandBigrams = readStringIntMap(jsonObject, JSON_FREEHAND_BIGRAMS);
+                }
             }
         } finally {
             try {
@@ -794,6 +809,7 @@ public class DataStore {
         category.setPhrase(getJSONString(jsonCategory, DataStore.JSON_PHRASE));
         category.setParentId(getJSONString(jsonCategory, DataStore.JSON_PARENT_ID));
         category.setHidden(getJSONBoolean(jsonCategory, DataStore.JSON_HIDDEN));
+        category.setPlaysByMonth(readPlays(jsonCategory));
         if (jsonCategory.has(DataStore.JSON_CHILDREN)) {
             JSONArray jsonChildren = jsonCategory.getJSONArray(DataStore.JSON_CHILDREN);
             for (int i = 0; i < jsonChildren.length(); i++) {
@@ -811,6 +827,7 @@ public class DataStore {
                     word.setPhrase(getJSONString(jsonChild, DataStore.JSON_PHRASE));
                     word.setParentId(getJSONString(jsonChild, DataStore.JSON_PARENT_ID));
                     word.setHidden(getJSONBoolean(jsonChild, DataStore.JSON_HIDDEN));
+                    word.setPlaysByMonth(readPlays(jsonChild));
                     category.getChildren(true).add(word);
                     if (addItemsToMap) {
                         m_ideogramMap.put(word.getId(), word);
@@ -875,6 +892,71 @@ public class DataStore {
             }
         }
         return value;
+    }
+
+    private JSONObject mapToJson(HashMap<String, Integer> map) throws JSONException {
+        JSONObject o = new JSONObject();
+        for (Map.Entry<String, Integer> e : map.entrySet()) {
+            o.put(e.getKey(), e.getValue());
+        }
+        return o;
+    }
+
+    private HashMap<String, Integer> readStringIntMap(JSONObject root, String key) {
+        HashMap<String, Integer> out = new HashMap<>();
+        if (root != null && root.has(key)) {
+            try {
+                JSONObject obj = root.getJSONObject(key);
+                java.util.Iterator<String> it = obj.keys();
+                while (it.hasNext()) {
+                    String k = it.next();
+                    out.put(k, obj.getInt(k));
+                }
+            } catch (JSONException ignored) {}
+        }
+        return out;
+    }
+
+    public HashMap<String, Integer> getSentencePhrases() { return m_sentencePhrases; }
+    public HashMap<String, Integer> getSentenceBigrams() { return m_sentenceBigrams; }
+    public HashMap<String, Integer> getFreehandBigrams() { return m_freehandBigrams; }
+
+    public void incrementSentencePhrase(java.util.List<String> ideogramIds) {
+        if (ideogramIds == null || ideogramIds.size() < 2) return;
+        String key = android.text.TextUtils.join("|", ideogramIds);
+        Integer c = m_sentencePhrases.get(key);
+        m_sentencePhrases.put(key, c == null ? 1 : c + 1);
+        incrementBigramsFromList(ideogramIds, m_sentenceBigrams);
+    }
+
+    public void incrementFreehandBigram(String previousId, String nextId) {
+        if (previousId == null || nextId == null || previousId.equals(nextId)) return;
+        String key = previousId + "|" + nextId;
+        Integer c = m_freehandBigrams.get(key);
+        m_freehandBigrams.put(key, c == null ? 1 : c + 1);
+    }
+
+    private void incrementBigramsFromList(java.util.List<String> ids, HashMap<String, Integer> target) {
+        for (int i = 0; i < ids.size() - 1; i++) {
+            String key = ids.get(i) + "|" + ids.get(i + 1);
+            Integer c = target.get(key);
+            target.put(key, c == null ? 1 : c + 1);
+        }
+    }
+
+    private java.util.HashMap<String, Integer> readPlays(JSONObject obj) {
+        java.util.HashMap<String, Integer> out = new java.util.HashMap<>();
+        if (obj.has(JSON_PLAYS)) {
+            try {
+                JSONObject plays = obj.getJSONObject(JSON_PLAYS);
+                java.util.Iterator<String> it = plays.keys();
+                while (it.hasNext()) {
+                    String k = it.next();
+                    out.put(k, plays.getInt(k));
+                }
+            } catch (JSONException ignored) {}
+        }
+        return out;
     }
 
     private boolean getJSONBoolean(JSONObject obj, String key) {

@@ -12,7 +12,13 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.Serializable;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Locale;
+import java.util.Map;
 
 public class Ideogram implements Serializable {	
 		
@@ -30,6 +36,7 @@ public class Ideogram implements Serializable {
 	private boolean hidden;
 	private Type type;
 	private String parentId = null;
+	private HashMap<String, Integer> m_playsByMonth = new HashMap<>();
 	
 	public Ideogram(Type type) {
 		this.setType(type);	
@@ -216,7 +223,34 @@ public class Ideogram implements Serializable {
 	public void setHidden(boolean hidden) {
 		this.hidden = hidden;
 	}
-	
+
+	public static String currentYearMonth() {
+		return new SimpleDateFormat("yyyy-MM", Locale.US).format(new Date());
+	}
+
+	public void incrementPlayCount() {
+		String key = currentYearMonth();
+		Integer c = m_playsByMonth.get(key);
+		m_playsByMonth.put(key, c == null ? 1 : c + 1);
+	}
+
+	public int getPlayCount(String yearMonth) {
+		Integer c = m_playsByMonth.get(yearMonth);
+		return c == null ? 0 : c;
+	}
+
+	public int getCurrentMonthPlayCount() {
+		return getPlayCount(currentYearMonth());
+	}
+
+	public Map<String, Integer> getPlaysByMonth() {
+		return m_playsByMonth;
+	}
+
+	public void setPlaysByMonth(HashMap<String, Integer> counts) {
+		m_playsByMonth = counts == null ? new HashMap<String, Integer>() : counts;
+	}
+
 	@Override
 	public String toString() {
 		JSONObject jsonObject = new JSONObject();
@@ -229,6 +263,12 @@ public class Ideogram implements Serializable {
 			jsonObject.put(DataStore.JSON_PARENT_ID, getParentId() == null ? "" : getParentId());
 			jsonObject.put(DataStore.JSON_TYPE, getType() == Type.Category ? DataStore.JSON_TYPE_CATEGORY : DataStore.JSON_TYPE_WORD);
 			jsonObject.put(DataStore.JSON_HIDDEN, isHidden());
+			JSONObject jsonPlays = new JSONObject();
+			for (Iterator<Map.Entry<String, Integer>> it = m_playsByMonth.entrySet().iterator(); it.hasNext();) {
+				Map.Entry<String, Integer> e = it.next();
+				jsonPlays.put(e.getKey(), e.getValue());
+			}
+			jsonObject.put(DataStore.JSON_PLAYS, jsonPlays);
 			JSONArray jsonChildren = new JSONArray();
 			for(Ideogram child : m_children) {
 				JSONObject jsonChild = new JSONObject(child.toString());

@@ -21,4 +21,9 @@
 	<color name="jabtalkSentenceActionButtonBorder">#d49e5b</color>
 
 	<color name="jabtalkPlayingHighlight">#80FFC107</color>
+
+	<color name="jabtalkStatsHeader">#20720f</color>
+	<color name="jabtalkStatsRowAlt">#F1F1F1</color>
+	<color name="jabtalkStatsLink">#1565C0</color>
+	<color name="jabtalkStatsBorder">#E0E0E0</color>
 </resources>

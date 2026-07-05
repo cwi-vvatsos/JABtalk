@@ -109,6 +109,21 @@ public class JTApp extends Application implements OnCompletionListener,
         return m_clipboard;
     }
 
+    public static int getComboWindowSeconds () {
+        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences ( me
+                .getApplicationContext () );
+        String value = settings.getString (
+                me.getResources ().getString ( R.string.preference_combo_window_key ), "3" );
+        try {
+            int v = Integer.parseInt ( value );
+            if ( v < 1 ) v = 1;
+            if ( v > 30 ) v = 30;
+            return v;
+        } catch ( Exception e ) {
+            return 3;
+        }
+    }
+
     public static boolean isSentenceBuilderEnabled () {
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences ( me
                 .getApplicationContext () );
@@ -507,6 +522,7 @@ public class JTApp extends Application implements OnCompletionListener,
     }
 
     public static void play ( Ideogram gram ) {
+        gram.incrementPlayCount ();
         FileInputStream fis = null;
         if ( gram.isSynthesizeButton () ) {
             if ( me.m_speechEngineReady && me.m_speechManager != null && isSpeechResourceFound () ) {
