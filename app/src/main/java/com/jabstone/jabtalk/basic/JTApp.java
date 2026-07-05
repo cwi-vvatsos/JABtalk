@@ -77,7 +77,7 @@ public class JTApp extends Application implements OnCompletionListener,
 
     public final static String DATASTORE_VERSION = "2";
     private static final Object lock = new Object ();
-    public static String URL_SUPPORT = "https://github.com/cwi-vvatsos/JABtalk/issues";
+    public static String URL_SUPPORT = "https://jabtalk.s.gy/support";
     private static JTApp me = null;
     private static List<ICategorySelectionListener> categoryListeners = new ArrayList<>();
     private static List<IDataStoreListener> datastoreListeners = new ArrayList<>();

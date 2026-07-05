@@ -7,6 +7,10 @@
           android:title="@string/menu_search"
           android:actionViewClass="android.widget.SearchView"
           android:showAsAction="ifRoom|collapseActionView" />
+    <item android:id="@+id/menu_item_teacher_share"
+          android:icon="@android:drawable/ic_menu_share"
+          android:title="@string/menu_teacher_share"
+          android:showAsAction="ifRoom" />
     <item android:id="@+id/menu_item_add_ideogram"
           android:icon="@drawable/ic_action_new"
           android:title="@string/menu_add_ideogram"
@@ -42,13 +46,13 @@
     <item android:id="@+id/menu_item_stats"
           android:title="@string/menu_stats"
         android:showAsAction="never" />
-    <item android:id="@+id/menu_item_help"
-          android:title="@string/menu_help"
-        android:showAsAction="never" />
     <item android:id="@+id/menu_item_history"
           android:title="@string/menu_history"
         android:showAsAction="never" />
     <item android:id="@+id/menu_item_log"
           android:title="@string/menu_log"
+        android:showAsAction="never" />
+    <item android:id="@+id/menu_item_about"
+          android:title="@string/menu_about"
         android:showAsAction="never" />
 </menu>

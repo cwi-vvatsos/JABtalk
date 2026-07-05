@@ -52,6 +52,10 @@
             android:configChanges="orientation|keyboardHidden"
             android:label="@string/stats_activity_title" />
 
+        <activity android:name=".activity.AboutActivity"
+            android:configChanges="orientation|keyboardHidden"
+            android:label="@string/menu_about" />
+
         <activity android:name="com.yalantis.ucrop.UCropActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />

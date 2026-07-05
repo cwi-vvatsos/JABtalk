@@ -88,6 +88,7 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
     private final int SOURCE_SYNTHESIZER = 8;
     private final int ACTIVITY_RESULT_CAMERA = 1000;
     private final int ACTIVITY_RESULT_CROP = 1006;
+    private final int ACTIVITY_RESULT_EXPORT_AUDIO = 1007;
     private final int ACTIVITY_RESULT_GALLERY = 1001;
     private final int ACTIVITY_RESULT_WEB = 1002;
     private final int ACTIVITY_RESULT_MUSIC = 1003;
@@ -218,6 +219,15 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
 
             public void onClick(View v) {
                 previewIdeogram();
+            }
+        });
+
+        // Setup export audio button
+        ImageButton exportButton = (ImageButton) findViewById(R.id.edit_export_audio);
+        exportButton.setOnClickListener(new View.OnClickListener() {
+
+            public void onClick(View v) {
+                launchExportAudio();
             }
         });
 
@@ -634,6 +644,34 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
                     showDialog(DIALOG_GENERIC);
                 }
                 break;
+            case ACTIVITY_RESULT_EXPORT_AUDIO:
+                if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+                    break;
+                }
+                try {
+                    File src = getCurrentAudioFile();
+                    if (src == null) {
+                        android.widget.Toast.makeText(this, R.string.export_audio_no_file,
+                                android.widget.Toast.LENGTH_SHORT).show();
+                        break;
+                    }
+                    java.io.InputStream in = new java.io.FileInputStream(src);
+                    java.io.OutputStream out = getContentResolver().openOutputStream(data.getData());
+                    byte[] buf = new byte[4096];
+                    int n;
+                    while ((n = in.read(buf)) > 0) {
+                        out.write(buf, 0, n);
+                    }
+                    in.close();
+                    out.close();
+                    android.widget.Toast.makeText(this, R.string.export_audio_success,
+                            android.widget.Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    android.widget.Toast.makeText(this,
+                            getString(R.string.export_audio_failed, e.getMessage()),
+                            android.widget.Toast.LENGTH_LONG).show();
+                }
+                break;
             case ACTIVITY_RESULT_CROP:
                 if (resultCode != RESULT_OK || data == null) {
                     resetTempImage();
@@ -837,6 +875,37 @@ public class EditIdeogramActivity extends Activity implements OnCancelListener,
                     .findViewById(R.id.IMAGEVIEW_ID);
             imgView.setImageDrawable(getResources().getDrawable(R.drawable.chalkboard));
         }
+    }
+
+    private void launchExportAudio() {
+        File audio = getCurrentAudioFile();
+        if (audio == null || !audio.exists() || audio.length() == 0) {
+            android.widget.Toast.makeText(this, R.string.export_audio_no_file,
+                    android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String ext = getFileExtension(audio.getAbsolutePath(), false);
+        String baseLabel = m_label.getText() != null && m_label.getText().length() > 0
+                ? m_label.getText().toString() : m_ideogram.getId();
+        String safe = baseLabel.replaceAll("[^A-Za-z0-9._-]", "_");
+        String suggested = safe + (ext == null || ext.isEmpty() ? "" : "." + ext);
+
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("audio/*");
+        intent.putExtra(Intent.EXTRA_TITLE, suggested);
+        startActivityForResult(intent, ACTIVITY_RESULT_EXPORT_AUDIO);
+    }
+
+    private File getCurrentAudioFile() {
+        if (tempAudio != null && tempAudio.exists()) {
+            return tempAudio;
+        }
+        if (m_ideogram != null && m_ideogram.getAudioPath() != null) {
+            File f = new File(m_ideogram.getAudioPath());
+            if (f.exists()) return f;
+        }
+        return null;
     }
 
     private void launchCrop(File source) {

@@ -513,11 +513,6 @@ public class ManageActivity extends Activity {
                 intent.setType("*/*");
                 startActivityForResult(intent, ACTIVITY_SELECT_RESTORE_FILE);
                 break;
-            case R.id.menu_item_help:
-                Intent i = new Intent(Intent.ACTION_VIEW);
-                i.setData(Uri.parse(JTApp.URL_SUPPORT));
-                startActivity(i);
-                break;
             case R.id.menu_item_preferences:
                 intent = new Intent(this, PreferenceActivity.class);
                 startActivityForResult(intent, ACTIVITY_RESULT_PREFERENCE);
@@ -543,6 +538,12 @@ public class ManageActivity extends Activity {
                 share.putExtra(Intent.EXTRA_TEXT, getString(R.string.share_app_message));
                 startActivity(Intent.createChooser(share,
                         getString(R.string.share_app_chooser_title)));
+                break;
+            case R.id.menu_item_about:
+                startActivity(new Intent(this, AboutActivity.class));
+                break;
+            case R.id.menu_item_teacher_share:
+                teacherShare();
                 break;
         }
 
@@ -893,6 +894,94 @@ public class ManageActivity extends Activity {
                     getString(R.string.sync_toast_backup_failed, err),
                     android.widget.Toast.LENGTH_LONG).show();
         }
+    }
+
+    private void teacherShare() {
+        final ProgressDialog progress = new ProgressDialog(this);
+        progress.setMessage(getString(R.string.teacher_share_preparing));
+        progress.setCancelable(false);
+        progress.show();
+
+        new AsyncTask<Void, Void, Object>() {
+            @Override
+            protected Object doInBackground(Void... voids) {
+                com.jabstone.jabtalk.basic.storage.DataStore ds = JTApp.getDataStore();
+                // Snapshot stats so we can restore after producing the sanitized backup.
+                java.util.HashMap<String, java.util.HashMap<String, Integer>> playSnap =
+                        new java.util.HashMap<>();
+                for (java.util.Map.Entry<String,
+                        com.jabstone.jabtalk.basic.storage.Ideogram> e : ds.getIdeogramMap().entrySet()) {
+                    java.util.Map<String, Integer> plays = e.getValue().getPlaysByMonth();
+                    if (plays != null && !plays.isEmpty()) {
+                        playSnap.put(e.getKey(), new java.util.HashMap<>(plays));
+                    }
+                }
+                java.util.HashMap<String, Integer> sp = new java.util.HashMap<>(ds.getSentencePhrases());
+                java.util.HashMap<String, Integer> sb = new java.util.HashMap<>(ds.getSentenceBigrams());
+                java.util.HashMap<String, Integer> fb = new java.util.HashMap<>(ds.getFreehandBigrams());
+
+                File out = null;
+                try {
+                    ds.clearAllStats();
+                    ds.saveDataStore();
+
+                    File cacheDir = new File(getCacheDir(), "shared");
+                    if (!cacheDir.exists()) cacheDir.mkdirs();
+                    // Clean out previous share leftovers
+                    File[] prev = cacheDir.listFiles();
+                    if (prev != null) {
+                        for (File f : prev) f.delete();
+                    }
+                    SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                    out = new File(cacheDir,
+                            "jabtalk_vocabulary_" + fmt.format(new Date()) + ".bak");
+                    ds.backupDataStore(Uri.fromFile(out), ds.getRootCategory());
+                    return out;
+                } catch (Exception ex) {
+                    return ex;
+                } finally {
+                    // Restore stats regardless of outcome
+                    for (java.util.Map.Entry<String, java.util.HashMap<String, Integer>> e
+                            : playSnap.entrySet()) {
+                        com.jabstone.jabtalk.basic.storage.Ideogram g = ds.getIdeogram(e.getKey());
+                        if (g != null) g.setPlaysByMonth(e.getValue());
+                    }
+                    ds.getSentencePhrases().putAll(sp);
+                    ds.getSentenceBigrams().putAll(sb);
+                    ds.getFreehandBigrams().putAll(fb);
+                    try {
+                        ds.saveDataStore();
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            @Override
+            protected void onPostExecute(Object result) {
+                progress.dismiss();
+                if (result instanceof File) {
+                    File bak = (File) result;
+                    try {
+                        Uri shareUri = androidx.core.content.FileProvider.getUriForFile(
+                                ManageActivity.this, "com.vatsos.jabtalk.fileprovider", bak);
+                        Intent share = new Intent(Intent.ACTION_SEND);
+                        share.setType("application/octet-stream");
+                        share.putExtra(Intent.EXTRA_STREAM, shareUri);
+                        share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        startActivity(Intent.createChooser(share,
+                                getString(R.string.teacher_share_chooser_title)));
+                    } catch (Exception e) {
+                        android.widget.Toast.makeText(ManageActivity.this,
+                                getString(R.string.teacher_share_failed, e.getMessage()),
+                                android.widget.Toast.LENGTH_LONG).show();
+                    }
+                } else if (result instanceof Exception) {
+                    Exception ex = (Exception) result;
+                    android.widget.Toast.makeText(ManageActivity.this,
+                            getString(R.string.teacher_share_failed, ex.getMessage()),
+                            android.widget.Toast.LENGTH_LONG).show();
+                }
+            }
+        }.execute();
     }
 
     private void toggleSortMode() {
