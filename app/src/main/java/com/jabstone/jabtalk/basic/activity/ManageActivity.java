@@ -168,7 +168,10 @@ public class ManageActivity extends Activity {
                 if (gram.isHidden() != makeHidden) {
                     gram.setHidden(makeHidden);
                     madeChanges = true;
-                    persistChanges(false);
+                    // Save silently -- the toast is the only feedback we want; a
+                    // progress dialog would flash a modal over the centre of the
+                    // screen for this near-instant single-flag change.
+                    persistChanges(false, false);
                     viewHolder.itemView.performHapticFeedback(
                             android.view.HapticFeedbackConstants.LONG_PRESS);
                     int msg = makeHidden
@@ -1213,8 +1216,12 @@ public class ManageActivity extends Activity {
     }
 
     private void persistChanges(boolean exitAfterSave) {
+        persistChanges(exitAfterSave, true);
+    }
+
+    private void persistChanges(boolean exitAfterSave, boolean showProgress) {
         if (saveTask == null || saveTask.getStatus() == Status.FINISHED) {
-            saveTask = new SaveDataStoreTask();
+            saveTask = new SaveDataStoreTask(showProgress);
             saveTask.execute(exitAfterSave);
         } else {
             JTApp.logMessage(TAG, JTApp.LOG_SEVERITY_ERROR, "SaveDataStore Task in invalid state");
@@ -1398,13 +1405,20 @@ public class ManageActivity extends Activity {
         PowerManager.WakeLock m_wakeLock;
         boolean exitAfterSave = false;
         private boolean errorFlag = false;
+        private final boolean showProgress;
+
+        SaveDataStoreTask(boolean showProgress) {
+            this.showProgress = showProgress;
+        }
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
             lockScreenOrientation();
-            progressDialog.setMessage(getString(R.string.dialog_message_saving));
-            progressDialog.show();
+            if (showProgress) {
+                progressDialog.setMessage(getString(R.string.dialog_message_saving));
+                progressDialog.show();
+            }
             m_wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Save:jabtalkPWL");
         }
 
@@ -1426,7 +1440,9 @@ public class ManageActivity extends Activity {
         protected void onPostExecute(Void param) {
             super.onPostExecute(param);
             unlockScreenOrientation();
-            progressDialog.dismiss();
+            if (showProgress) {
+                progressDialog.dismiss();
+            }
 
             if (m_wakeLock.isHeld()) {
                 m_wakeLock.release();
