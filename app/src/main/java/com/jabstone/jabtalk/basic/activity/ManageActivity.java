@@ -84,6 +84,7 @@ public class ManageActivity extends Activity {
     private RecyclerView m_listView = null;
     private ItemTouchHelper m_touchHelper = null;
     private boolean m_sortMode = false;
+    private boolean m_didReorder = false;
     private Paint m_swipePaint = null;
     private Drawable m_eyeOpen = null;
     private Drawable m_eyeClosed = null;
@@ -141,8 +142,15 @@ public class ManageActivity extends Activity {
             public boolean onMove(RecyclerView recyclerView,
                                   RecyclerView.ViewHolder viewHolder,
                                   RecyclerView.ViewHolder target) {
-                return m_adapter.onItemMove(viewHolder.getAdapterPosition(),
+                boolean moved = m_adapter.onItemMove(viewHolder.getAdapterPosition(),
                         target.getAdapterPosition());
+                if (moved) {
+                    // Remember that a real drag-reorder happened, so clearView
+                    // persists it. A swipe never calls onMove, so it stays false
+                    // and won't trigger the (visible) reorder save.
+                    m_didReorder = true;
+                }
+                return moved;
             }
 
             @Override
@@ -168,18 +176,11 @@ public class ManageActivity extends Activity {
                 if (gram.isHidden() != makeHidden) {
                     gram.setHidden(makeHidden);
                     madeChanges = true;
-                    // Save silently -- the toast is the only feedback we want; a
-                    // progress dialog would flash a modal over the centre of the
-                    // screen for this near-instant single-flag change.
+                    // Save silently. Feedback is the row itself restyling to/from
+                    // "Hidden from view" plus a haptic buzz -- no toast, no dialog.
                     persistChanges(false, false);
                     viewHolder.itemView.performHapticFeedback(
                             android.view.HapticFeedbackConstants.LONG_PRESS);
-                    int msg = makeHidden
-                            ? R.string.toast_tile_hidden
-                            : R.string.toast_tile_visible;
-                    android.widget.Toast.makeText(ManageActivity.this,
-                            getString(msg, gram.getLabel()),
-                            android.widget.Toast.LENGTH_SHORT).show();
                 }
                 // The row is not removed, only restyled -- bring it back into place.
                 m_adapter.notifyItemChanged(position);
@@ -221,7 +222,14 @@ public class ManageActivity extends Activity {
             @Override
             public void clearView(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
                 super.clearView(recyclerView, viewHolder);
-                m_adapter.onItemMoveFinished();
+                // Only persist a reorder if the user actually dragged a row to a
+                // new position. Otherwise (e.g. after a swipe-to-hide/show, which
+                // saves silently on its own) this would fire a second, visible
+                // "Saving changes..." save and flash a modal over the screen.
+                if (m_didReorder) {
+                    m_didReorder = false;
+                    m_adapter.onItemMoveFinished();
+                }
             }
         });
         m_touchHelper.attachToRecyclerView(getListView());
@@ -941,29 +949,43 @@ public class ManageActivity extends Activity {
         com.jabstone.jabtalk.basic.SyncBackup.clearFolder(this);
     }
 
-    private void performSyncBackup(boolean showToast) {
-        if (madeChanges) {
-            try {
-                JTApp.getDataStore().saveDataStore();
-                madeChanges = false;
-            } catch (Exception ignored) {}
-        }
-        String err = com.jabstone.jabtalk.basic.SyncBackup.writeBackupIfConfigured(this);
-        if (err == null) {
-            if (showToast) {
-                android.widget.Toast.makeText(this, R.string.sync_toast_backup_done,
-                        android.widget.Toast.LENGTH_SHORT).show();
+    private void performSyncBackup(final boolean showToast) {
+        // The save + cloud/SAF write are I/O and can take ~0.5s, so run them off
+        // the UI thread; report the result via toast on completion.
+        new AsyncTask<Void, Void, String>() {
+            @Override
+            protected String doInBackground(Void... voids) {
+                if (madeChanges) {
+                    try {
+                        JTApp.getDataStore().saveDataStore();
+                        madeChanges = false;
+                    } catch (Exception ignored) {}
+                }
+                return com.jabstone.jabtalk.basic.SyncBackup
+                        .writeBackupIfConfigured(ManageActivity.this);
             }
-        } else if ("no_folder".equals(err) || "folder_lost".equals(err)) {
-            if (showToast) {
-                android.widget.Toast.makeText(this, R.string.sync_toast_folder_lost,
-                        android.widget.Toast.LENGTH_SHORT).show();
+
+            @Override
+            protected void onPostExecute(String err) {
+                if (err == null) {
+                    if (showToast) {
+                        android.widget.Toast.makeText(ManageActivity.this,
+                                R.string.sync_toast_backup_done,
+                                android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                } else if ("no_folder".equals(err) || "folder_lost".equals(err)) {
+                    if (showToast) {
+                        android.widget.Toast.makeText(ManageActivity.this,
+                                R.string.sync_toast_folder_lost,
+                                android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    android.widget.Toast.makeText(ManageActivity.this,
+                            getString(R.string.sync_toast_backup_failed, err),
+                            android.widget.Toast.LENGTH_LONG).show();
+                }
             }
-        } else {
-            android.widget.Toast.makeText(this,
-                    getString(R.string.sync_toast_backup_failed, err),
-                    android.widget.Toast.LENGTH_LONG).show();
-        }
+        }.execute();
     }
 
     private void teacherShare() {
@@ -1145,7 +1167,8 @@ public class ManageActivity extends Activity {
             progressDialog.show();
         }
 
-        if (saveTask != null && saveTask.getStatus() == AsyncTask.Status.RUNNING) {
+        if (saveTask != null && saveTask.getStatus() == AsyncTask.Status.RUNNING
+                && saveTask.showProgress) {
             progressDialog.setMessage(getString(R.string.dialog_message_saving));
             progressDialog.show();
         }
@@ -1406,6 +1429,7 @@ public class ManageActivity extends Activity {
         boolean exitAfterSave = false;
         private boolean errorFlag = false;
         private final boolean showProgress;
+        private String syncError = null;
 
         SaveDataStoreTask(boolean showProgress) {
             this.showProgress = showProgress;
@@ -1427,6 +1451,13 @@ public class ManageActivity extends Activity {
             exitAfterSave = params[0];
             try {
                 JTApp.getDataStore().saveDataStore();
+                // Write the cloud/sync backup here on the background thread. Doing
+                // it in onPostExecute (UI thread) stalled the UI for ~0.5s after
+                // every save -- most noticeable as a "stick" right after a swipe.
+                if (getSyncFolderUri() != null) {
+                    syncError = com.jabstone.jabtalk.basic.SyncBackup
+                            .writeBackupIfConfigured(ManageActivity.this);
+                }
             } catch (JabException e) {
                 errorFlag = true;
                 getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_TITLE,
@@ -1452,9 +1483,17 @@ public class ManageActivity extends Activity {
                 getIntent().putExtra(JTApp.INTENT_EXTRA_DIALOG_FINISH_ON_DISMISS, true);
                 showDialog(DIALOG_ERROR);
             } else {
+                madeChanges = false;
                 JTApp.fireDataStoreUpdated();
-                if (getSyncFolderUri() != null) {
-                    performSyncBackup(false);
+                // Sync backup already ran in doInBackground; only a real write
+                // failure needs surfacing (a missing/lost folder is handled
+                // silently, same as before).
+                if (syncError != null
+                        && !"no_folder".equals(syncError)
+                        && !"folder_lost".equals(syncError)) {
+                    android.widget.Toast.makeText(ManageActivity.this,
+                            getString(R.string.sync_toast_backup_failed, syncError),
+                            android.widget.Toast.LENGTH_LONG).show();
                 }
             }
             if (exitAfterSave) {

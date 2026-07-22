@@ -132,8 +132,6 @@
     <string name="menu_delete">Delete</string>
     <string name="menu_hide">Hide</string>
     <string name="menu_unhide">Unhide</string>
-    <string name="toast_tile_hidden">\"%1$s\" hidden</string>
-    <string name="toast_tile_visible">\"%1$s\" visible</string>
     <string name="menu_edit">Edit</string>
     <string name="menu_copy">Copy</string>
     <string name="menu_cut">Cut</string>
