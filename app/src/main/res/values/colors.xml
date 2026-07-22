@@ -26,4 +26,7 @@
 	<color name="jabtalkStatsRowAlt">#F1F1F1</color>
 	<color name="jabtalkStatsLink">#1565C0</color>
 	<color name="jabtalkStatsBorder">#E0E0E0</color>
+
+	<color name="jabtalkSwipeShow">#20720f</color>
+	<color name="jabtalkSwipeHide">#9E9E9E</color>
 </resources>

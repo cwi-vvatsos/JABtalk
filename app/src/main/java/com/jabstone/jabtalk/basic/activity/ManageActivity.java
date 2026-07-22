@@ -11,6 +11,9 @@ import android.content.pm.ActivityInfo;
 import android.database.Cursor;
 import android.provider.OpenableColumns;
 import android.content.res.Configuration;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.AsyncTask.Status;
@@ -81,6 +84,9 @@ public class ManageActivity extends Activity {
     private RecyclerView m_listView = null;
     private ItemTouchHelper m_touchHelper = null;
     private boolean m_sortMode = false;
+    private Paint m_swipePaint = null;
+    private Drawable m_eyeOpen = null;
+    private Drawable m_eyeClosed = null;
     private boolean isBackupRestoreClicked = false;
     private boolean isPartialRestoreClicked = false;
     private Uri restorePath = null;
@@ -129,7 +135,8 @@ public class ManageActivity extends Activity {
         getListView().setAdapter(m_adapter);
 
         m_touchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(
-                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+                ItemTouchHelper.UP | ItemTouchHelper.DOWN,
+                ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
             @Override
             public boolean onMove(RecyclerView recyclerView,
                                   RecyclerView.ViewHolder viewHolder,
@@ -139,8 +146,68 @@ public class ManageActivity extends Activity {
             }
 
             @Override
+            public int getSwipeDirs(RecyclerView recyclerView,
+                                    RecyclerView.ViewHolder viewHolder) {
+                // Swipe-to-hide/show is only available in normal (non-sort) mode,
+                // where sort uses drag + the right-edge scroll strip instead.
+                if (m_sortMode) {
+                    return 0;
+                }
+                return ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT;
+            }
+
+            @Override
             public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
-                // swipe not used
+                // Swipe left -> make the tile visible; swipe right -> hide it.
+                int position = viewHolder.getAdapterPosition();
+                if (position == RecyclerView.NO_POSITION) {
+                    return;
+                }
+                Ideogram gram = m_adapter.getItem(position);
+                boolean makeHidden = (direction == ItemTouchHelper.RIGHT);
+                if (gram.isHidden() != makeHidden) {
+                    gram.setHidden(makeHidden);
+                    madeChanges = true;
+                    persistChanges(false);
+                    viewHolder.itemView.performHapticFeedback(
+                            android.view.HapticFeedbackConstants.LONG_PRESS);
+                    int msg = makeHidden
+                            ? R.string.toast_tile_hidden
+                            : R.string.toast_tile_visible;
+                    android.widget.Toast.makeText(ManageActivity.this,
+                            getString(msg, gram.getLabel()),
+                            android.widget.Toast.LENGTH_SHORT).show();
+                }
+                // The row is not removed, only restyled -- bring it back into place.
+                m_adapter.notifyItemChanged(position);
+            }
+
+            @Override
+            public float getSwipeThreshold(RecyclerView.ViewHolder viewHolder) {
+                // Commit once the row has been pulled far enough to fully reveal
+                // the square strip (its width == the row height).
+                View v = viewHolder.itemView;
+                if (v.getWidth() == 0) {
+                    return 0.5f;
+                }
+                return (float) v.getHeight() / v.getWidth();
+            }
+
+            @Override
+            public void onChildDraw(Canvas c, RecyclerView recyclerView,
+                                    RecyclerView.ViewHolder viewHolder,
+                                    float dX, float dY, int actionState,
+                                    boolean isCurrentlyActive) {
+                // Cap the pull distance so the row only slides far enough to
+                // expose a square box holding the eye icon, not all the way across.
+                float clampedDX = dX;
+                if (actionState == ItemTouchHelper.ACTION_STATE_SWIPE) {
+                    float maxSwipe = viewHolder.itemView.getHeight();
+                    clampedDX = Math.max(-maxSwipe, Math.min(dX, maxSwipe));
+                    drawSwipeIndicator(c, viewHolder.itemView, clampedDX);
+                }
+                super.onChildDraw(c, recyclerView, viewHolder, clampedDX, dY,
+                        actionState, isCurrentlyActive);
             }
 
             @Override
@@ -998,6 +1065,49 @@ public class ManageActivity extends Activity {
         } else {
             setTitle(getString(R.string.manage_activity_title));
         }
+    }
+
+    /**
+     * Paints the coloured reveal and eye icon on the edge of a row while it is
+     * being swiped. Swiping left (dX &lt; 0) reveals a green "show" strip with an
+     * open eye on the right edge; swiping right (dX &gt; 0) reveals a grey "hide"
+     * strip with a closed eye on the left edge.
+     */
+    private void drawSwipeIndicator(Canvas c, View itemView, float dX) {
+        if (dX == 0) {
+            return;
+        }
+        if (m_swipePaint == null) {
+            m_swipePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            m_eyeOpen = getResources().getDrawable(R.drawable.ic_eye_open);
+            m_eyeClosed = getResources().getDrawable(R.drawable.ic_eye_closed);
+        }
+
+        float density = getResources().getDisplayMetrics().density;
+        int iconSize = (int) (28 * density);
+        int margin = (int) (24 * density);
+        int top = itemView.getTop();
+        int bottom = itemView.getBottom();
+        int iconTop = top + (bottom - top - iconSize) / 2;
+
+        Drawable icon;
+        if (dX < 0) {
+            // Swiping left -> make visible.
+            m_swipePaint.setColor(getResources().getColor(R.color.jabtalkSwipeShow));
+            c.drawRect(itemView.getRight() + dX, top, itemView.getRight(), bottom, m_swipePaint);
+            icon = m_eyeOpen;
+            int right = itemView.getRight() - margin;
+            int left = right - iconSize;
+            icon.setBounds(left, iconTop, right, iconTop + iconSize);
+        } else {
+            // Swiping right -> hide.
+            m_swipePaint.setColor(getResources().getColor(R.color.jabtalkSwipeHide));
+            c.drawRect(itemView.getLeft(), top, itemView.getLeft() + dX, bottom, m_swipePaint);
+            icon = m_eyeClosed;
+            int left = itemView.getLeft() + margin;
+            icon.setBounds(left, iconTop, left + iconSize, iconTop + iconSize);
+        }
+        icon.draw(c);
     }
 
     protected RecyclerView getListView() {

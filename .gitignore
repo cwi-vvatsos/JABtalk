@@ -112,3 +112,7 @@ gradle-app.setting
 .gradletasknamecache
 projectFilesBackup
 app/release
+
+# Local-only working notes (not part of the published fork)
+CLAUDE.md
+CHANGELOG.md
